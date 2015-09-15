@@ -1,0 +1,167 @@
+\contentsline {chapter}{\numberline {1}Experimental data and definitions of the many-body problem}{1}{chapter.1}
+\contentsline {section}{\numberline {1.1}Introduction}{1}{section.1.1}
+\contentsline {section}{\numberline {1.2}Masses and Binding energies}{5}{section.1.2}
+\contentsline {section}{\numberline {1.3}$Q$-values and separation energies}{9}{section.1.3}
+\contentsline {section}{\numberline {1.4}Radii}{12}{section.1.4}
+\contentsline {section}{\numberline {1.5}Definitions}{12}{section.1.5}
+\contentsline {section}{\numberline {1.6}A modified Hamiltonian}{16}{section.1.6}
+\contentsline {section}{\numberline {1.7}Numerical solution of the single-particle Schroedinger equation}{22}{section.1.7}
+\contentsline {paragraph}{a)}{26}{section*.9}
+\contentsline {paragraph}{b)}{27}{section*.10}
+\contentsline {paragraph}{c)}{27}{section*.11}
+\contentsline {paragraph}{d)}{27}{section*.12}
+\contentsline {paragraph}{a)}{27}{section*.14}
+\contentsline {paragraph}{b)}{27}{section*.15}
+\contentsline {paragraph}{c)}{28}{section*.16}
+\contentsline {paragraph}{a)}{28}{section*.18}
+\contentsline {paragraph}{b)}{28}{section*.19}
+\contentsline {paragraph}{c)}{28}{section*.20}
+\contentsline {paragraph}{a)}{29}{section*.22}
+\contentsline {paragraph}{b)}{29}{section*.23}
+\contentsline {paragraph}{c)}{29}{section*.24}
+\contentsline {paragraph}{d)}{29}{section*.25}
+\contentsline {chapter}{\numberline {2}Mean-field approaches}{31}{chapter.2}
+\contentsline {section}{\numberline {2.1}Derivation of Hartree-Fock equations in coordinate space}{31}{section.2.1}
+\contentsline {section}{\numberline {2.2}Definitions and notations}{34}{section.2.2}
+\contentsline {section}{\numberline {2.3}Derivation of Hartree-Fock equations in coordinate space}{37}{section.2.3}
+\contentsline {section}{\numberline {2.4}Analysis of Hartree-Fock equations in coordinate space}{40}{section.2.4}
+\contentsline {section}{\numberline {2.5}Hartree-Fock by varying the coefficients of a wave function expansion}{41}{section.2.5}
+\contentsline {section}{\numberline {2.6}Hartree-Fock algorithm}{44}{section.2.6}
+\contentsline {section}{\numberline {2.7}Analysis of Hartree-Fock equations and Koopman's theorem}{45}{section.2.7}
+\contentsline {paragraph}{a)}{48}{section*.28}
+\contentsline {paragraph}{b)}{49}{section*.29}
+\contentsline {paragraph}{c)}{49}{section*.30}
+\contentsline {paragraph}{Hint.}{49}{section*.31}
+\contentsline {paragraph}{a)}{49}{section*.33}
+\contentsline {chapter}{\numberline {3}Second quantization}{51}{chapter.3}
+\contentsline {section}{\numberline {3.1}Second quantization}{51}{section.3.1}
+\contentsline {section}{\numberline {3.2}One-body operators in second quantization}{55}{section.3.2}
+\contentsline {section}{\numberline {3.3}Two-body operators in second quantization}{58}{section.3.3}
+\contentsline {section}{\numberline {3.4}Particle-hole formalism}{62}{section.3.4}
+\contentsline {section}{\numberline {3.5}Summarizing and defining a normal-ordered Hamiltonian}{66}{section.3.5}
+\contentsline {section}{\numberline {3.6}Hartree-Fock in second quantization and stability of HF solution}{67}{section.3.6}
+\contentsline {subsection}{\numberline {3.6.1}Thouless' theorem}{68}{subsection.3.6.1}
+\contentsline {subsection}{\numberline {3.6.2}New operators}{69}{subsection.3.6.2}
+\contentsline {subsection}{\numberline {3.6.3}Showing that $|\mathaccentV {tilde}07E{c}\delimiter "526930B = |c'\delimiter "526930B $}{69}{subsection.3.6.3}
+\contentsline {subsection}{\numberline {3.6.4}Hartree-Fock in second quantization and stability of HF solution}{71}{subsection.3.6.4}
+\contentsline {section}{\numberline {3.7}Operators in second quantization}{73}{section.3.7}
+\contentsline {chapter}{\numberline {4}Nuclear forces}{85}{chapter.4}
+\contentsline {section}{\numberline {4.1}Introduction}{85}{section.4.1}
+\contentsline {section}{\numberline {4.2}Single-particle and two-particle quantum numbers}{85}{section.4.2}
+\contentsline {subsection}{\numberline {4.2.1}Clebsch-Gordan coefficients}{90}{subsection.4.2.1}
+\contentsline {subsection}{\numberline {4.2.2}Quantum numbers and the Schroeodinger equation in relative and CM coordinates}{90}{subsection.4.2.2}
+\contentsline {section}{\numberline {4.3}Components of the force and isospin}{92}{section.4.3}
+\contentsline {subsection}{\numberline {4.3.1}Isospin}{92}{subsection.4.3.1}
+\contentsline {section}{\numberline {4.4}Two-body matrix elements}{94}{section.4.4}
+\contentsline {section}{\numberline {4.5}Phenomenology of nuclear forces: From Yukawa to Lattice QCD and Effective Field Theory}{97}{section.4.5}
+\contentsline {subsection}{\numberline {4.5.1}Phenomenology of nuclear forces: Charge Dependence}{98}{subsection.4.5.1}
+\contentsline {section}{\numberline {4.6}Symmetries of the Nucleon-Nucleon (NN) Force}{99}{section.4.6}
+\contentsline {subsection}{\numberline {4.6.1}Dramatis Personae}{100}{subsection.4.6.1}
+\contentsline {subsection}{\numberline {4.6.2}Components of the force and quantum numbers}{100}{subsection.4.6.2}
+\contentsline {subsection}{\numberline {4.6.3}Relative and CoM system, quantum numbers}{100}{subsection.4.6.3}
+\contentsline {subsection}{\numberline {4.6.4}Components of the force and quantum numbers}{102}{subsection.4.6.4}
+\contentsline {subsection}{\numberline {4.6.5}Phenomenology of one-pion exchange}{104}{subsection.4.6.5}
+\contentsline {section}{\numberline {4.7}Models for nuclear forces and derivation of non-relativistic expressions}{105}{section.4.7}
+\contentsline {section}{\numberline {4.8}The Lippman-Schwinger equation for two-nucleon scattering}{109}{section.4.8}
+\contentsline {paragraph}{a)}{124}{section*.56}
+\contentsline {paragraph}{b)}{124}{section*.57}
+\contentsline {paragraph}{a)}{125}{section*.59}
+\contentsline {paragraph}{b)}{125}{section*.60}
+\contentsline {chapter}{\numberline {5}Configuration interaction theory}{127}{chapter.5}
+\contentsline {section}{\numberline {5.1}Introduction}{127}{section.5.1}
+\contentsline {section}{\numberline {5.2}Full Configuration Interaction Theory}{129}{section.5.2}
+\contentsline {subsection}{\numberline {5.2.1}Full Configuration Interaction Theory}{130}{subsection.5.2.1}
+\contentsline {section}{\numberline {5.3}Building a many-body basis}{133}{section.5.3}
+\contentsline {subsection}{\numberline {5.3.1}Basic steps in a building an FCI code}{136}{subsection.5.3.1}
+\contentsline {subsection}{\numberline {5.3.2}Example case: pairing Hamiltonian}{141}{subsection.5.3.2}
+\contentsline {subsection}{\numberline {5.3.3}Angular momentum algebra, Wigner-Eckart theorem}{144}{subsection.5.3.3}
+\contentsline {chapter}{\numberline {6}Many-body perturbation theory}{161}{chapter.6}
+\contentsline {section}{\numberline {6.1}Many-body perturbation theory}{161}{section.6.1}
+\contentsline {chapter}{\numberline {7}Coupled cluster theory}{167}{chapter.7}
+\contentsline {section}{\numberline {7.1}Introduction}{167}{section.7.1}
+\contentsline {section}{\numberline {7.2}Creation and Annihilation operators}{167}{section.7.2}
+\contentsline {section}{\numberline {7.3}CCSD Wavefunction}{168}{section.7.3}
+\contentsline {section}{\numberline {7.4}Derivation of Equations}{169}{section.7.4}
+\contentsline {subsection}{\numberline {7.4.1}Baker-Campbell-Hausdorff formula}{169}{subsection.7.4.1}
+\contentsline {subsection}{\numberline {7.4.2}Normal Order and Contractions}{170}{subsection.7.4.2}
+\contentsline {subsection}{\numberline {7.4.3}Wick's Theorem}{171}{subsection.7.4.3}
+\contentsline {subsection}{\numberline {7.4.4}Fermi Vacuum and Particle Holes}{173}{subsection.7.4.4}
+\contentsline {subsection}{\numberline {7.4.5}Normal Ordered $\mathbf {H}$}{174}{subsection.7.4.5}
+\contentsline {subsection}{\numberline {7.4.6}CCSD Hamiltonian}{176}{subsection.7.4.6}
+\contentsline {subsection}{\numberline {7.4.7}CCSD Energy}{178}{subsection.7.4.7}
+\contentsline {subsection}{\numberline {7.4.8}$t_i^a$ amplitudes}{181}{subsection.7.4.8}
+\contentsline {subsection}{\numberline {7.4.9}$t_{ij}^{ab}$ amplitudes}{183}{subsection.7.4.9}
+\contentsline {section}{\numberline {7.5}Introducing denominators}{186}{section.7.5}
+\contentsline {subsection}{\numberline {7.5.1}$t_i^a$}{187}{subsection.7.5.1}
+\contentsline {subsection}{\numberline {7.5.2}$t_{ij}^{ab}$}{187}{subsection.7.5.2}
+\contentsline {subsection}{\numberline {7.5.3}Initial guess}{188}{subsection.7.5.3}
+\contentsline {section}{\numberline {7.6}CCSD factorization}{188}{section.7.6}
+\contentsline {section}{\numberline {7.7}Constructing an algorithm}{189}{section.7.7}
+\contentsline {subsection}{\numberline {7.7.1}Inserting denominators}{189}{subsection.7.7.1}
+\contentsline {subsection}{\numberline {7.7.2}$[W_1]$}{190}{subsection.7.7.2}
+\contentsline {subsection}{\numberline {7.7.3}$[W_2]$}{191}{subsection.7.7.3}
+\contentsline {subsection}{\numberline {7.7.4}$[W_3]$}{191}{subsection.7.7.4}
+\contentsline {subsection}{\numberline {7.7.5}$[F_1]$}{192}{subsection.7.7.5}
+\contentsline {subsection}{\numberline {7.7.6}$[F_2]$}{193}{subsection.7.7.6}
+\contentsline {subsection}{\numberline {7.7.7}$[F_3]$}{194}{subsection.7.7.7}
+\contentsline {subsection}{\numberline {7.7.8}$[W_4]$}{194}{subsection.7.7.8}
+\contentsline {subsection}{\numberline {7.7.9}Inserting intermediates}{195}{subsection.7.7.9}
+\contentsline {subsection}{\numberline {7.7.10}Inserting into $t_i^a$}{196}{subsection.7.7.10}
+\contentsline {subsection}{\numberline {7.7.11}Description of algorithm}{196}{subsection.7.7.11}
+\contentsline {subsection}{\numberline {7.7.12}Scaling}{198}{subsection.7.7.12}
+\contentsline {section}{\numberline {7.8}CCSDT equations}{199}{section.7.8}
+\contentsline {subsection}{\numberline {7.8.1}CCSDT-1a}{200}{subsection.7.8.1}
+\contentsline {subsection}{\numberline {7.8.2}CCSDT-1b}{201}{subsection.7.8.2}
+\contentsline {subsection}{\numberline {7.8.3}CCSDT-2}{201}{subsection.7.8.3}
+\contentsline {subsection}{\numberline {7.8.4}CCSDT-3}{202}{subsection.7.8.4}
+\contentsline {subsection}{\numberline {7.8.5}CCSDT-4}{203}{subsection.7.8.5}
+\contentsline {subsection}{\numberline {7.8.6}Full CCSDT}{203}{subsection.7.8.6}
+\contentsline {chapter}{\numberline {8}Similarity Transformation Group methods}{205}{chapter.8}
+\contentsline {section}{\numberline {8.1}Introduction}{205}{section.8.1}
+\contentsline {chapter}{\numberline {9}Monte Carlo Methods}{207}{chapter.9}
+\contentsline {section}{\numberline {9.1}Variational Monte Carlo methods}{207}{section.9.1}
+\contentsline {subsection}{\numberline {9.1.1}The c++ code with a VMC Solver class, main program first}{213}{subsection.9.1.1}
+\contentsline {section}{\numberline {9.2}The Metropolis algorithm}{217}{section.9.2}
+\contentsline {section}{\numberline {9.3}Why blocking?}{219}{section.9.3}
+\contentsline {subsection}{\numberline {9.3.1}Time Auto-correlation Function}{227}{subsection.9.3.1}
+\contentsline {subsection}{\numberline {9.3.2}Importance sampling}{231}{subsection.9.3.2}
+\contentsline {subsection}{\numberline {9.3.3}Importance sampling, program elements}{232}{subsection.9.3.3}
+\contentsline {subsection}{\numberline {9.3.4}Importance sampling, program elements}{233}{subsection.9.3.4}
+\contentsline {subsection}{\numberline {9.3.5}Importance sampling, program elements}{233}{subsection.9.3.5}
+\contentsline {subsection}{\numberline {9.3.6}Importance sampling, program elements}{234}{subsection.9.3.6}
+\contentsline {subsection}{\numberline {9.3.7}Importance sampling, program elements}{234}{subsection.9.3.7}
+\contentsline {subsection}{\numberline {9.3.8}Importance sampling, program elements}{235}{subsection.9.3.8}
+\contentsline {section}{\numberline {9.4}Efficient calculation of Slater determinants}{239}{section.9.4}
+\contentsline {chapter}{\numberline {10}Infinite matter}{247}{chapter.10}
+\contentsline {section}{\numberline {10.1}Introduction to studies of infinite matter}{247}{section.10.1}
+\contentsline {subsection}{\numberline {10.1.1}The infinite electron gas}{247}{subsection.10.1.1}
+\contentsline {subsection}{\numberline {10.1.2}The infinite electron gas as a homogenous system}{248}{subsection.10.1.2}
+\contentsline {subsection}{\numberline {10.1.3}Periodic boundary conditions}{249}{subsection.10.1.3}
+\contentsline {subsection}{\numberline {10.1.4}Defining the Hamiltonian operator}{249}{subsection.10.1.4}
+\contentsline {subsection}{\numberline {10.1.5}Single-particle Hartree-Fock energy}{250}{subsection.10.1.5}
+\contentsline {paragraph}{a)}{251}{section*.62}
+\contentsline {paragraph}{Hint.}{251}{section*.63}
+\contentsline {paragraph}{Solution.}{251}{section*.64}
+\contentsline {paragraph}{b)}{252}{section*.65}
+\contentsline {paragraph}{Solution.}{252}{section*.66}
+\contentsline {paragraph}{c)}{253}{section*.67}
+\contentsline {paragraph}{Solution.}{253}{section*.68}
+\contentsline {paragraph}{d)}{255}{section*.69}
+\contentsline {paragraph}{e)}{255}{section*.70}
+\contentsline {paragraph}{a)}{255}{section*.72}
+\contentsline {paragraph}{b)}{256}{section*.73}
+\contentsline {paragraph}{c)}{256}{section*.74}
+\contentsline {paragraph}{d)}{257}{section*.75}
+\contentsline {paragraph}{e)}{257}{section*.76}
+\contentsline {subsection}{\numberline {10.1.6}Preparing the ground for numerical calculations; kinetic energy and Ewald term}{259}{subsection.10.1.6}
+\contentsline {subsection}{\numberline {10.1.7}Ewald correction term}{259}{subsection.10.1.7}
+\contentsline {subsection}{\numberline {10.1.8}Interaction in momentum space}{260}{subsection.10.1.8}
+\contentsline {subsection}{\numberline {10.1.9}Antisymmetrized matrix elements in three dimensions}{261}{subsection.10.1.9}
+\contentsline {subsection}{\numberline {10.1.10}Fock operator}{261}{subsection.10.1.10}
+\contentsline {subsection}{\numberline {10.1.11}Periodic boundary conditions and single-particle states}{261}{subsection.10.1.11}
+\contentsline {subsection}{\numberline {10.1.12}Magic number for the two-dimensional electron gas}{262}{subsection.10.1.12}
+\contentsline {subsection}{\numberline {10.1.13}Hartree-Fock energies}{263}{subsection.10.1.13}
+\contentsline {chapter}{\numberline {11}Decays}{265}{chapter.11}
+\contentsline {section}{\numberline {11.1}Electromagnetic multipole moments and transitions}{265}{section.11.1}
+\contentsline {section}{\numberline {11.2}$\beta $-decay}{269}{section.11.2}
+\contentsline {section}{\numberline {11.3}References}{273}{section.11.3}

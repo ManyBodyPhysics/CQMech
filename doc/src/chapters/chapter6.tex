@@ -1,0 +1,1449 @@
+
+\chapter{Coupled-Cluster theory at the level of singles and doubles}
+
+\abstract{This chapter introduces several matrix related topics, from the solution of linear equations, computing determinants, conjugate-gradient methods, spline interpolation to efficient handling of matrices}
+
+
+Coupled Cluster is an important ab initio technique in computational chemistry. It is considered the most reliable and also computational affordable method for solving the electronic Schr\"{o}dinger equation. It was introduced in Quantum Chemistry by Paldus and Cizek in the late 1960s. Then it was derived using Feynman-like diagrams, however about ten years later Hurley re-derived the equations in terms more familiar to most physicists. In this chapter we will look at the derivation of coupled cluster singles and doubles (CCSD), using the results from Hartree Fock. \\
+
+This chapter is almost solely based on a book by T. Daniel Crawford and Henry S. Schaeffer III, Ref.\cite{ccsdbook11}. 
+
+\section{Creation and Annihilation operators}
+In Coupled Cluster, CC, we will solve the Schr\"{o}dinger equation.
+
+\begin{equation}
+\textbf{H} | \Psi \rangle = E | \Psi \rangle \label{SE} .
+\end{equation}
+From Hartree Fock calculations we have created a $|\Psi\rangle_{HF}$ which contains MOs in a Slater determinant. Dirac notation provides a simple representation of this. In Dirac notation only the diagonal terms in the slater determinant are listed. If $|\Psi_0 \rangle$ has four electrons Dirac notation would be
+
+\begin{equation}
+|\Psi_0 \rangle =  |\psi_i(r_1), \psi_j(r_2), \psi_k(r_3), \psi_l(r_4) \rangle . \label{dirac_not} 
+\end{equation}
+Eq. \eqref{dirac_not} will be used to introduce a few new operators needed. The creation operator $\textbf{a}^{\dag}_m$ creates a new electron in orbital m.
+
+\begin{equation}
+\textbf{a}^{\dag}_m |\psi_i(r_1), \psi_j(r_2), \psi_k(r_3), \psi_l(r_4) \rangle = |\psi_i(r_1), \psi_j(r_2), \psi_k(r_3), \psi_l(r_4), \psi_m(r_5) \rangle .
+\end{equation}
+The annihilation operator, $\textbf{a}_n$, destroys an electron in orbital n.
+
+\begin{equation}
+\textbf{a}_n |\psi_i(r_1), \psi_j(r_2), \psi_k(r_3), \psi_l(r_4), \psi_n(r_5) \rangle = |\psi_i(r_1), \psi_j(r_2), \psi_k(r_3), \psi_l(r_4) \rangle  .
+\end{equation}
+These two operators working together can destroy one electron in orbital n, and create another in orbital m. The result is that one electron now occupies a different orbital, as such
+
+\begin{equation}
+\textbf{a}^{\dag}_m \textbf{a}_n |\psi_i(r_1), \psi_j(r_2), \psi_k(r_3), \psi_n(r_4) \rangle = |\psi_i(r_1), \psi_j(r_2), \psi_k(r_3), \psi_m(r_4) \rangle .
+\end{equation}
+These operators have a few interesting features. Such as the annihilation operator acting on the vacuum state produces 0.
+
+\begin{equation}
+a_n | \rangle = 0  .
+\end{equation}
+Interchanging two rows in the Slater determinant introduce a change in the sign. Hence we have
+
+\begin{equation}
+\textbf{a}^{\dag}_m \textbf{a}^{\dag}_n | \rangle = |\psi_m, \psi_n \rangle = - |\psi_n, \psi_m \rangle = -\textbf{a}^{\dag}_n \textbf{a}^{\dag}_m | \rangle  .
+\end{equation}
+
+\begin{equation}
+\Rightarrow \textbf{a}^{\dag}_m \textbf{a}^{\dag}_n + \textbf{a}^{\dag}_n \textbf{a}^{\dag}_m = 0 .
+\end{equation}
+The same applies to the annihilation operator.
+
+\begin{equation}
+\textbf{a}_m \textbf{a}_n + \textbf{a}_n \textbf{a}_m = 0 .
+\end{equation}
+These are known as anti commutation relations. It can be shown that the anti commutation relation when mixing $\textbf{a}$ and $\textbf{a}^{\dag}$ is
+
+\begin{equation}
+\textbf{a}^{\dag}_m \textbf{a}_n + \textbf{a}_n \textbf{a}^{\dag}_m = \delta_{mn} . \label{ccsd_anni_creato_operator_combo}
+\end{equation}
+
+\section{CCSD Wavefunction}
+The first step in coupled cluster is rewriting the wavefunction,
+
+\begin{equation}
+|\Psi_{CC} \rangle \equiv e^{\textbf{T}} | \Psi_{HF} \rangle .
+\end{equation} 
+$\textbf{T}$ is known as the cluster operator. This includes all possible excitations. $|\Psi_{CC} \rangle$ is thus a linear combination of Slater determinants of all possible excitations and is an exact solution to Eq. \eqref{SE}. $\textbf{T}$ can be defined in terms of a one-orbital excitation operator, a two-orbital excitation operator and so on.
+
+\begin{equation}
+\textbf{T} \equiv \textbf{T}_1 + \textbf{T}_2 + \textbf{T}_3 + \textbf{T}_4 \dots .
+\end{equation}
+When doing CCSD only single excitations, $\textbf{T}_1$, and double excitations, $\textbf{T}_2$, are included. 
+
+\begin{equation}
+\textbf{T} = \textbf{T}_1 + \textbf{T}_2 .
+\end{equation}
+Other CC methods include more terms. If $\textbf{T}_3$ is included the method is called CCSDT. CCSDTQ includes also $\textbf{T}_4$. \\
+
+$\textbf{T}_1$ is defined using one creation and one annihilation operator, because we will have one single electron excited. Also defining $\textbf{T}_1$ is an amplitude $t_i^a$ and a summation over all possible excitations.  
+
+\begin{equation}
+\textbf{T}_1 \equiv \sum_{a,i} t_i^a \textbf{a}^{\dag}_a \textbf{a}_i . \label{t1defi}
+\end{equation}
+$\textbf{T}_2$ is defined by two creation and two annihilation operators and an amplitude $t_{ij}^{ab}$.
+
+\begin{equation}
+\textbf{T}_2 \equiv \frac{1}{4} \sum_{a,b,i,j} t_{ij}^{ab} \textbf{a}^{\dag}_a \textbf{a}^{\dag}_b \textbf{a}_i \textbf{a}_j . \label{t2defi}
+\end{equation}
+
+\section{Derivation of Equations}
+This section contains the formal derivation of coupled cluster theory, starting from Eq. \eqref{SE} and using the CCSD wavefunction. 
+
+\begin{equation}
+\textbf{H} e^{\textbf{T}} |\Psi \rangle_{HF} = E e^{\textbf{T}} |\Psi \rangle_{HF} .
+\end{equation}
+For this derivation $|\Psi \rangle_{HF}$ will be shortened to $|\Psi_0 \rangle$. 
+
+\begin{equation}
+E = \langle \Psi_0 |e^{-\textbf{T}} \textbf{H} e^{\textbf{T}} |\Psi_0 \rangle .
+\end{equation}
+We also assume an orthonormal basis, meaning
+
+\begin{equation}
+\langle \Psi_m |e^{-\textbf{T}} \textbf{H} e^{\textbf{T}} |\Psi_0 \rangle = 0 .
+\end{equation}
+
+\subsection{Baker-Campbell-Hausdorff formula}
+The Baker-Campbell-Hausdorff formula is used to expand $e^{-\textbf{T}} \textbf{H} e^{\textbf{T}}$.
+
+\begin{equation}
+\begin{split}
+e^{-\textbf{T}} \textbf{H} e^{\textbf{T}} = 
+\textbf{H} 
++ \left[ \textbf{H}, \textbf{T} \right] 
++ \frac{1}{2} \left[ [\textbf{H}, \textbf{T}], \textbf{T} \right]  + \frac{1}{6} \left[ [ [\textbf{H}, \textbf{T}], \textbf{T}], \textbf{T} \right] \\
++ \frac{1}{24} \left[ [ [ [\textbf{H}, \textbf{T}], \textbf{T}],\textbf{T}], \textbf{T} \right] \dots .
+\end{split} \label{baker}
+\end{equation}
+$\textbf{T}$ is expressed in terms of $\textbf{a}^{\dag}$ and $\textbf{a}$. $\textbf{H}$ contains a maximum of two orbital interactions. It can be showed that $\textbf{H}$ can also be expressed in terms of these operators. 
+
+\begin{equation}
+\textbf{H} = \sum_{a,i} h_{a,i}
+\textbf{a}^{\dag}_a 
+\textbf{a}_i 
++ \frac{1}{4} \sum_{a,b,i,j} \langle ab||ij \rangle
+\textbf{a}^{\dag}_a  
+\textbf{a}^{\dag}_b
+\textbf{a}_i 
+\textbf{a}_j . \label{annih}
+\end{equation}
+Where $h_{a,i} = \langle \psi_a | \textbf{h} | \psi_i \rangle$. With $\textbf{h}$ the one-particle part of $\textbf{H}$. This is the same Hamiltonian as before expressed slightly different and will be discussed further later on. Eq. \eqref{baker} can be simplified using commutators.
+
+\begin{equation}
+[\textbf{a}^{\dag}_a  \textbf{a}_i 
+, \textbf{a}^{\dag}_b \textbf{a}_j] =
+\textbf{a}^{\dag}_a  \textbf{a}_i \textbf{a}^{\dag}_b \textbf{a}_j
+- \textbf{a}^{\dag}_b \textbf{a}_j \textbf{a}^{\dag}_a  \textbf{a}_i .
+\end{equation} 
+Using the anti commutator relations this commutator itself can be simplified.
+
+\begin{equation}
+[\textbf{a}^{\dag}_a  \textbf{a}_i 
+, \textbf{a}^{\dag}_b \textbf{a}_j] =
+\textbf{a}^{\dag}_a  \delta_{ib} \textbf{a}_j
+- \textbf{a}^{\dag}_b \delta_{ja} \textbf{a}_i .
+\end{equation}
+This simplification reduces the number of indices from 4 to 3, replacing two operators with a Kronecker delta. Each nested commutator in Eq. \eqref{baker} will reduce the number of indexes by 1. The maximum number of creation/annihilation operators in $\textbf{H}$ was 4. This means Eq. \eqref{baker} will naturally truncate after exactly 4 terms, and we can remove the dots.
+
+\begin{equation}
+\begin{split}
+e^{-\textbf{T}} \textbf{H} e^{\textbf{T}} = 
+\textbf{H} 
++ \left[ \textbf{H}, \textbf{T} \right] 
++ \frac{1}{2} \left[ [\textbf{H}, \textbf{T}], \textbf{T} \right] 
++ \frac{1}{6} \left[ [ [ \textbf{H},[\textbf{T}], \textbf{T}], \textbf{T} \right] \\
++ \frac{1}{24} \left[ [ [ [\textbf{H}, \textbf{T}], \textbf{T}], \textbf{T}], \textbf{T}  \right] .
+\end{split}  \label{variationalccsd}
+\end{equation}
+
+\subsection{Normal Order and Contractions}
+When deriving CCSD equations it is common to introduce a concept called normal ordering of second quantized operators. This means that all creation operators are placed to the left and the annihilation operators to the right. The mathematics of swapping the order of creation and annihilation operators are well defined. To show this we define an example operator $\textbf{O}$ and use the anti commutator relations.
+
+\begin{align}
+\textbf{O} & = 
+\textbf{a}_i 
+\textbf{a}^{\dag}_a 
+\textbf{a}_j 
+\textbf{a}^{\dag}_b \label{normalorder} \\ &
+= \delta_{ia} 
+\textbf{a}_j 
+\textbf{a}^{\dag}_b - 
+\textbf{a}^{\dag}_a 
+\textbf{a}_i  
+\textbf{a}_j 
+\textbf{a}^{\dag}_b \nonumber \\ &
+= \delta_{ia} \delta_{jb} -
+\delta_{ia} 
+\textbf{a}^{\dag}_b
+\textbf{a}_j -
+\delta_{jb}
+\textbf{a}^{\dag}_a
+\textbf{a}_i +
+\textbf{a}^{\dag}_a
+\textbf{a}_i
+\textbf{a}_j
+\textbf{a}^{\dag}_b \nonumber \\ &
+= \delta_{ia} \delta_{jb} - 
+\delta_{ia} 
+\textbf{a}^{\dag}_b
+\textbf{a}_j +
+\delta_{ib} 
+\textbf{a}^{\dag}_a
+\textbf{a}_j -
+\delta_{jb} 
+\textbf{a}^{\dag}_a
+\textbf{a}_i -
+\textbf{a}^{\dag}_a
+\textbf{a}^{\dag}_b
+\textbf{a}_i
+\textbf{a}_j .
+\end{align}
+The final expression of $\textbf{O}$ is in normal order since all creation operators are to the left and all annihilation operators to the right. Notice that we now have five terms, four of which have a reduced number of operators compared to our first definition of $\textbf{O}$. Any combination of annihilation and creation operators can be expressed as a linear combination of normal ordered combinations of these operators. \\
+
+The four terms with reduced number of operators arise from contractions between operators. A contraction between two operators $\textbf{A}$ and $\textbf{B}$, that each contain an arbitrary number of creation or/and annihilation operators, can be defined as such:
+
+\begin{equation}
+\contraction{}{\textbf{A}}{}{\textbf{B}}
+\textbf{A}\textbf{B}
+ \equiv \textbf{A}\textbf{B} - \left\{ \textbf{A}\textbf{B} \right\}_{\nu} .
+\end{equation}
+Here $\left\{ \textbf{A}\textbf{B} \right\}_{\nu}$ is the normal ordered form of $\textbf{A}\textbf{B}$. $\contraction{}{\textbf{A}}{}{\textbf{B}}
+\textbf{A}\textbf{B}$ is called the contraction between $\textbf{A}$ and $\textbf{B}$. As an example $\textbf{A} = \textbf{a}_i$ and $\textbf{B} = \textbf{a}_j$ will give a contraction of
+
+\begin{equation}
+\contraction{}{\textbf{a}_i}{}{\textbf{a}_j}
+\textbf{a}_i\textbf{a}_j
+= \textbf{a}_i \textbf{a}_j - \left\{ \textbf{a}_i \textbf{a}_j \right\}_{\nu} = \textbf{a}_i \textbf{a}_j - \textbf{a}_i \textbf{a}_j = 0 . \label{wickexample1}
+\end{equation}
+From the example above we see the contraction of all annihilation operators will be zero since there will be no swapping of operators when creating the normal ordered form. The same will apply to contractions between operators formed from only creation operators. Also the contraction between already normal ordered operators will be zero. \\
+
+However the contraction between different operators not in normal order will not be zero. The simplest example is one annihilation operator in front of one creation operator.
+
+\begin{equation}
+\contraction{}{\textbf{a}_i}{}{\textbf{a}^{\dag}_a}
+\textbf{a}_i\textbf{a}^{\dag}_a
+= \textbf{a}_i \textbf{a}^{\dag}_a - \left\{ \textbf{a}_i \textbf{a}^{\dag}_a \right\}_{\nu} = \textbf{a}_i \textbf{a}^{\dag}_a + \textbf{a}^{\dag}_a \textbf{a}_i = \delta_{ia} .
+\end{equation}
+Here we used Eq. \eqref{ccsd_anni_creato_operator_combo}.
+
+\subsection{Wick's Theorem}
+Wick's Theorem provides a schematic way of defining any string of annihilation and creation operators in terms of these contractions. A string of annihilation and creation operators can be defined as $ABC \dots XYZ$ where $A, B, C, X, Y, Z$ $\dots$ represent either a creation or an annihilation operator.  Wick's Theorem is defined as such
+
+\begin{align}
+\textbf{A} \textbf{B} \textbf{C} \dots \textbf{X} \textbf{Y} \textbf{Z} = & \left\{\textbf{A} \textbf{B} \textbf{C} \dots \textbf{X} \textbf{Y} \textbf{Z} \right\}_{\nu} \label{wicks} \\
+& + \sum_{singles} \{
+\contraction{}{\textbf{A}}{}{\textbf{B}}
+\textbf{A}\textbf{B}
+\textbf{C} \dots \textbf{X} \textbf{Y} \textbf{Z}
+\}_{\nu} \nonumber \\
+& + \sum_{doubles} \{
+\contraction{}{\textbf{A}}{\textbf{B}}{\textbf{C}}
+\contraction[2ex]{\textbf{A}}{\textbf{B}}{\textbf{C} \dots \textbf{X} \textbf{Y}}{\textbf{Z}}
+\textbf{A} \textbf{B} \textbf{C} \dots \textbf{X} \textbf{Y} \textbf{Z} 
+\}_{\nu} \nonumber \\
+& \dots \nonumber
+\end{align}
+The right side of Eq. \eqref{wicks} should represent every possible contraction of $\textbf{A} \textbf{B} \textbf{C} \dots \textbf{X} \textbf{Y} \textbf{Z}$. To specify the notation we apply Wick's theorem as an example to the operator $\textbf{O}$ defined in Eq. \eqref{normalorder} and repeated here.
+
+\begin{equation}
+\textbf{O} = \textbf{a}_i \textbf{a}^{\dag}_a \textbf{a}_j \textbf{a}^{\dag}_b \nonumber
+\end{equation}
+Applying Wick's Theorem provides
+
+\begin{align}
+\textbf{O} = & 
+\{
+\textbf{a}_i \textbf{a}^{\dag}_a \textbf{a}_j \textbf{a}^{\dag}_b
+\}_{\nu} \\ &
++ \{
+\contraction{}{\textbf{a}_i}{}{\textbf{a}^{\dag}_a}
+\textbf{a}_i \textbf{a}^{\dag}_a
+\textbf{a}_j \textbf{a}^{\dag}_b
+\}_{\nu} \\ &
++ \{
+\textbf{a}_i
+\contraction{}{\textbf{a}^{\dag}_a}{}{\textbf{a}_j}
+\textbf{a}^{\dag}_a \textbf{a}_j
+\textbf{a}^{\dag}_b
+\}_{\nu} \label{wickex1} \\ &
++ \{
+\textbf{a}_i \textbf{a}^{\dag}_a
+\contraction{}{\textbf{a}^j}{}{\textbf{a}^{\dag}_b}
+\textbf{a}_j \textbf{a}^{\dag}_b
+\}_{\nu} \\ &
++ \{
+\contraction{}{\textbf{a}_i}{\textbf{a}^{\dag}_a}{\textbf{a}_j}
+\textbf{a}_i \textbf{a}^{\dag}_a \textbf{a}_j
+\textbf{a}^{\dag}_b
+\}_{\nu} \label{wickex2} \\ &
++ \{
+\textbf{a}_i
+\contraction{}{\textbf{a}^{\dag}_a}{\textbf{a}_j}{\textbf{a}^{\dag}_b}
+\textbf{a}^{\dag}_a \textbf{a}_j \textbf{a}^{\dag}_b
+\}_{\nu} \label{wickex3} \\ &
++ \{
+\contraction{}{\textbf{a}_i}{\textbf{a}^{\dag}_a \textbf{a}_j}{\textbf{a}^{\dag}_b}
+\textbf{a}_i \textbf{a}^{\dag}_a \textbf{a}_j \textbf{a}^{\dag}_b
+\}_{\nu} \label{wickex4} \\ &
++ \{
+\contraction{}{\textbf{a}_i}{}{\textbf{a}^{\dag}_a}
+\textbf{a}_i \textbf{a}^{\dag}_a 
+\contraction{}{\textbf{a}_j}{}{\textbf{a}^{\dag}_b}
+\textbf{a}_j \textbf{a}^{\dag}_b
+\}_{\nu} . \label{wicksdoubles}
+\end{align}
+Eq. \eqref{wicksdoubles} is from the doubles summation. The other terms are from the singles summation. Eqs. \eqref{wickex1}, \eqref{wickex2} and \eqref{wickex3} are zero when using the rules such as \eqref{wickexample1}. This leaves the terms
+
+\begin{align}
+\textbf{O} = & 
+\{
+\textbf{a}_i \textbf{a}^{\dag}_a \textbf{a}_j \textbf{a}^{\dag}_b
+\}_{\nu}
++ \{
+\contraction{}{\textbf{a}_i}{}{\textbf{a}^{\dag}_a}
+\textbf{a}_i \textbf{a}^{\dag}_a
+\textbf{a}_j \textbf{a}^{\dag}_b
+\}_{\nu}
++ \{
+\textbf{a}_i \textbf{a}^{\dag}_a
+\contraction{}{\textbf{a}^j}{}{\textbf{a}^{\dag}_b}
+\textbf{a}_j \textbf{a}^{\dag}_b
+\}_{\nu} \nonumber \\ &
++ \{
+\contraction{}{\textbf{a}_i}{\textbf{a}^{\dag}_a \textbf{a}_j}{\textbf{a}^{\dag}_b}
+\textbf{a}_i \textbf{a}^{\dag}_a \textbf{a}_j \textbf{a}^{\dag}_b
+\}_{\nu}
++ \{
+\contraction{}{\textbf{a}_i}{}{\textbf{a}^{\dag}_a}
+\textbf{a}_i \textbf{a}^{\dag}_a 
+\contraction{}{\textbf{a}_j}{}{\textbf{a}^{\dag}_b}
+\textbf{a}_j \textbf{a}^{\dag}_b
+\}_{\nu} .
+\end{align}
+These must be evaluated. One trick needed is when swapping two operators inside a contraction the sign is changed. Eq. \eqref{wickex4} is used as an example.
+
+\begin{equation}
+\{
+\contraction{}{\textbf{a}_i}{\textbf{a}^{\dag}_a \textbf{a}_j}{\textbf{a}^{\dag}_b}
+\textbf{a}_i \textbf{a}^{\dag}_a \textbf{a}_j \textbf{a}^{\dag}_b
+\}_{\nu}
+= - \{
+\contraction{}{\textbf{a}_i}{\textbf{a}^{\dag}_a}{\textbf{a}^{\dag}_b}
+\textbf{a}_i \textbf{a}^{\dag}_a \textbf{a}^{\dag}_b 
+\textbf{a}_j 
+\}_{\nu}
+= \{
+\contraction{}{\textbf{a}_i}{}{\textbf{a}^{\dag}_b}
+\textbf{a}_i  \textbf{a}^{\dag}_b 
+\textbf{a}^{\dag}_a \textbf{a}_j 
+\}_{\nu} . \label{wikssign}
+\end{equation}
+Remembering $\{\contraction{}{\textbf{a}_i}{}{\textbf{a}^{\dag}_b}
+\textbf{a}_i  \textbf{a}^{\dag}_b \}_{\nu} = \delta_{ib}$ then the terms in $\textbf{O}$ reduces in order to
+
+\begin{equation}
+\textbf{O} =  \{ 
+\textbf{a}_i \textbf{a}^{\dag}_a
+\textbf{a}_j \textbf{a}^{\dag}_b
+\} +
+\delta_{ia} \{
+\textbf{a}_j \textbf{a}^{\dag}_b
+\} +
+\delta_{jb} \{
+\textbf{a}_i \textbf{a}^{\dag}_a
+\} +
+\delta_{ib} \{
+\textbf{a}^{\dag}_a \textbf{a}_j
+\} +
+\delta_{ia} \delta_{ib} . 
+\end{equation}
+
+Using $\{
+\textbf{a} \textbf{a}^{\dag}
+\} = -\textbf{a}^{\dag} \textbf{a}$ and $\{
+\textbf{a}^{\dag} \textbf{a} 
+\} = \textbf{a}^{\dag} \textbf{a}$ we get
+
+\begin{equation}
+\textbf{O} = 
+\textbf{a}^{\dag}_a \textbf{a}^{\dag}_b
+\textbf{a}_i \textbf{a}_j  
+- \delta_{ia} \textbf{a}^{\dag}_b \textbf{a}_j
+- \delta_{jb} \textbf{a}^{\dag}_a \textbf{a}_i
++ \delta_{ib} \textbf{a}^{\dag}_a \textbf{a}_j 
++ \delta_{ia} \delta_{ib} ,
+\end{equation}
+which is identical to Eq. \eqref{normalorder}. The sign rules can sometimes be complicated, when there is more than one contraction present. Swapping two operators can fulfil the positioning for two contractions at once, as seen in example Eq. \eqref{examplebullshit}. This provides a minus sign which must not be neglected.
+
+\begin{equation}
+\{
+\contraction{}{\textbf{a}_i}{\textbf{a}^{\dag}_a}{\textbf{a}_j}
+\contraction[2ex]{\textbf{a}_i}{\textbf{a}^{\dag}_a}{\textbf{a}_j}{\textbf{a}^{\dag}_b}
+\textbf{a}_i \textbf{a}^{\dag}_a \textbf{a}_j \textbf{a}^{\dag}_b
+\}_{\nu}
+= - \{
+\contraction{}{\textbf{a}_i}{}{\textbf{a}^{\dag}_a}
+\contraction{\textbf{a}_i \textbf{a}^{\dag}_a}{\textbf{a}_j}{}{\textbf{a}^{\dag}_b}
+\textbf{a}_i \textbf{a}^{\dag}_a \textbf{a}_j \textbf{a}^{\dag}_b
+\} . \label{examplebullshit}
+\end{equation}
+
+\subsection{Fermi Vacuum and Particle Holes}
+
+When using creation and annihilation operators it is common they work on the vacuum state, $| \rangle$. Eq. \eqref{dirac_not} would commonly be represented as such
+
+\begin{equation}
+|\Psi_0 \rangle = \textbf{a}^{\dag}_i
+\textbf{a}^{\dag}_j
+\textbf{a}^{\dag}_k
+\textbf{a}^{\dag}_l |\rangle .
+\end{equation}
+An excited state $|\Psi_m\rangle$ would for example be noted as the following
+
+\begin{equation}
+|\Psi_m \rangle = \textbf{a}^{\dag}_m
+\textbf{a}^{\dag}_i
+\textbf{a}^{\dag}_j
+\textbf{a}^{\dag}_k |\rangle .
+\end{equation}
+Where the m orbital is occupied and the l orbital is not occupied. In our CCSD derivation we will not use this kind of notation. The Fermi Vacuum is introduced and is later defined as the Hartree Fock result. However continuing this example the Fermi Vacuum could be defined as $|\Psi_0\rangle$, and the excited state would be
+
+\begin{equation}
+|\Psi_m\rangle = \textbf{a}^{\dag}_m \textbf{a}_l |\Psi_0\rangle .
+\end{equation}
+This creates a "hole state" in orbital l, since an occupied orbital is now unoccupied. It also creates a "particle state" in orbital m, since this is now occupied and was unoccupied in the Fermi Vacuum. \\
+
+This definition will bring new features to Wick's theorem. Indexes $a, b, c \dots$ will denote newly occupied orbitals. Indexes $i, j, k \dots$ will denote newly formed holes. The operator $\textbf{a}^{\dag}_i$ can then be thought of as annihilating a hole. $\textbf{a}_a$ can be thought of annihilating a particle. Likewise $\textbf{a}^{\dag}_a$ and $\textbf{a}_i$ can be thought of as creating a particle or creating a hole. \\
+
+This differs from the concept of $\textbf{a}^{\dag}$ always being a creation operator, since $\textbf{a}^{\dag}_i$ can be thought of as annihilating a hole state. This changes our Wick's Theorem calculations, since we still have the only terms not zero being those with one annihilation operator followed by one creation operator. There are only two possibilities of this happening.
+
+\begin{equation}
+\contraction{}{\textbf{a}^{\dag}_i}{}{\textbf{a}_j}
+\textbf{a}^{\dag}_i \textbf{a}_j
+ = \textbf{a}^{\dag}_i \textbf{a}_j
+ - \{\textbf{a}^{\dag}_i \textbf{a}_j \}_{\nu} = \textbf{a}^{\dag}_i \textbf{a}_j
+ +  \textbf{a}_j \textbf{a}^{\dag}_i = \delta_{ij} . \label{fermi1}
+\end{equation}
+
+\begin{equation}
+\contraction{}{\textbf{a}_a}{}{\textbf{a}^{\dag}_b}
+\textbf{a}_a \textbf{a}^{\dag}_b = \textbf{a}_a \textbf{a}^{\dag}_b - \{\textbf{a}_a \textbf{a}^{\dag}_b\}_{\nu} = \textbf{a}_a \textbf{a}^{\dag}_b + \textbf{a}^{\dag}_b \textbf{a}_a = \delta_{ab} . \label{fermi2}
+\end{equation}
+Any other contraction will be 0 using rules analogous to Eq. \eqref{wickexample1}
+
+\subsection{Normal Ordered $\textbf{H}$}
+As noted in Eq. \eqref{annih} $\textbf{H}$ can be expressed in terms of creation and annihilation operators. This expression is known as the secound-quantized form of the electronic Hamiltionan and will be repeated here, but the indices will be changed because $a,b,i,j$ have now been denoted a new meaning.
+
+\begin{equation}
+\textbf{H} = \sum_{pq} <p|\textbf{h}|q> \textbf{a}^{\dag}_q \textbf{a}_p + 
+\frac{1}{4} \sum_{pqrs} \langle pq||rs \rangle \textbf{a}^{\dag}_p \textbf{a}^{\dag}_q \textbf{a}_s \textbf{a}_r .
+\end{equation}
+We now wish to use Wick's theorem on this operator to simplify. From the one-electron term we use:
+
+\begin{equation}
+\textbf{a}^{\dag}_p \textbf{a}_q = \{\textbf{a}^{\dag}_p \textbf{a}_q \} + \{\contraction{}{\textbf{a}^{\dag}_p}{}{\textbf{a}_q}
+ \textbf{a}^{\dag}_p \textbf{a}_q 
+\} . 
+\end{equation}
+Eq. \eqref{fermi1} states that $\{\contraction{}{\textbf{a}^{\dag}_p}{}{\textbf{a}_q}
+\textbf{a}^{\dag}_p \textbf{a}_q \}$ is not equal to zero only if both operators act on a hole space, then $\{\contraction{}{\textbf{a}^{\dag}_p}{}{\textbf{a}_q}
+\textbf{a}^{\dag}_p \textbf{a}_q \}$ = $\delta_{pq}$. This means 
+
+\begin{equation}
+\sum_{pq}
+\{\contraction{}{\textbf{a}^{\dag}_p}{}{\textbf{a}_q}
+\textbf{a}^{\dag}_p \textbf{a}_q \} = \sum_i \langle i|h|i \rangle .
+\end{equation}
+Inserting this in $\textbf{H}$ we get:
+
+\begin{equation}
+\textbf{H} = \sum_{pq} <p|\textbf{h}|q> 
+\{\textbf{a}^{\dag}_p \textbf{a}_q \}
++ \sum_i \langle i|h|i \rangle
+ + 
+\frac{1}{4} \sum_{pqrs} \langle pq||rs \rangle \textbf{a}^{\dag}_p \textbf{a}^{\dag}_q \textbf{a}_s \textbf{a}_r . \label{temp_h}
+\end{equation}
+The Wick's theorem will also be applied to the two electron part, $\textbf{a}^{\dag}_p \textbf{a}^{\dag}_q \textbf{a}_s \textbf{a}_r$. Included here are only the non-zero terms.
+
+\begin{align}
+\textbf{a}^{\dag}_p \textbf{a}^{\dag}_q \textbf{a}_s \textbf{a}_r = & \{\textbf{a}^{\dag}_p \textbf{a}^{\dag}_q \textbf{a}_s \textbf{a}_r\} 
++ \{
+\contraction{}{\textbf{a}^{\dag}_p}{\textbf{a}^{\dag}_q}{\textbf{a}_s}
+\textbf{a}^{\dag}_p \textbf{a}^{\dag}_q \textbf{a}_s 
+\textbf{a}_r
+\}
++ \{
+\textbf{a}^{\dag}_p
+\contraction{}{\textbf{a}^{\dag}_q}{}{\textbf{a}_s}
+\textbf{a}^{\dag}_q \textbf{a}_s 
+\textbf{a}_r
+\} \nonumber \\ &
++ \{
+\contraction{}{\textbf{a}^{\dag}_p}{\textbf{a}^{\dag}_q \textbf{a}_s}{\textbf{a}_r}
+\textbf{a}^{\dag}_p \textbf{a}^{\dag}_q \textbf{a}_s 
+\textbf{a}_r
+\}
++ \{\textbf{a}^{\dag}_p
+\contraction{}{\textbf{a}^{\dag}_q}{\textbf{a}_s}{\textbf{a}_r}
+\textbf{a}^{\dag}_q \textbf{a}_s \textbf{a}_r
+\}
++ \{
+\contraction{}{\textbf{a}^{\dag}_p}{\textbf{a}^{\dag}_q}{\textbf{a}_s}
+\contraction[2ex]{\textbf{a}^{\dag}_p}{\textbf{a}^{\dag}_q}{\textbf{a}_s}{\textbf{a}_r}
+\textbf{a}^{\dag}_p \textbf{a}^{\dag}_q \textbf{a}_s 
+\textbf{a}_r
+\} \nonumber \\ &
++ \{
+\contraction[2ex]{\textbf{a}^{\dag}_p}{\textbf{a}^{\dag}_q}{\textbf{a}_s}{\textbf{a}_r}
+\contraction{}{\textbf{a}^{\dag}_p}{\textbf{a}^{\dag}_q \textbf{a}_s}{\textbf{a}_r}
+\textbf{a}^{\dag}_p \textbf{a}^{\dag}_q \textbf{a}_s 
+\textbf{a}_r
+\} . \nonumber
+\end{align}
+These can be simplified using Eq. \eqref{fermi1}, and the rules for index swapping within a contraction noted in Eq. \eqref{wikssign}.
+
+\begin{align}
+\textbf{a}^{\dag}_p \textbf{a}^{\dag}_q \textbf{a}_s \textbf{a}_r = &\{\textbf{a}^{\dag}_p \textbf{a}^{\dag}_q \textbf{a}_s \textbf{a}_r\} 
++ \delta_{pi} \delta_{ps} \{ \textbf{a}^{\dag}_q \textbf{a}_r \}
+\nonumber \\ & 
++ \delta_{qi} \delta_{qs}
+\{ \textbf{a}^{\dag}_p \textbf{a}_r \}
++ \delta_{pi} \delta_{pr} 
+\{ \textbf{a}^{\dag}_q \textbf{a}_s \}
++ \delta_{qi} \delta_{qr}
+\{ \textbf{a}^{\dag}_p \textbf{a}_s \} \nonumber \\ &
+- \delta_{pi} \delta_{ps} \delta_{qj} \delta_{qr}
++ \delta_{pi} \delta_{pr} \delta_{qj} \delta_{qs} .
+\end{align}
+The two electron part can now be replaced.
+
+\begin{align}
+\frac{1}{4} \sum_{pqrs} \langle pq||rs \rangle \textbf{a}^{\dag}_p \textbf{a}^{\dag}_q \textbf{a}_s \textbf{a}_r = &
+\frac{1}{4}
+\sum_{pqrs} \langle pq||rs \rangle \{\textbf{a}^{\dag}_p \textbf{a}^{\dag}_q \textbf{a}_s \textbf{a}_r\}
+\nonumber \\ &
+- \frac{1}{4} \sum_{iqr} \langle iq||ri \rangle \{\textbf{a}^{\dag}_q \textbf{a}_r \} \nonumber \\ &
++ \frac{1}{4} \sum_{ipr} \langle pi||ri \rangle \{\textbf{a}^{\dag}_p \textbf{a}_r \} \nonumber \\ &
++ \frac{1}{4} \sum_{iqs} \langle iq||is \rangle \{\textbf{a}^{\dag}_q \textbf{a}_s \} \nonumber \\ &
+- \frac{1}{4} \sum_{ips} \langle pi||is \rangle \{\textbf{a}^{\dag}_p \textbf{a}_s \} \nonumber \\ &
+- \frac{1}{4} \sum_{ij} \langle ij||ji \rangle \nonumber \\ &
++ \frac{1}{4} \sum_{ij} \langle ij||ij \rangle . \nonumber
+\end{align}
+From the symmetry in the single bar four index integrals it can be shown that these symmetries hold for the double bar integrals:
+
+\begin{equation}
+\langle pq||rs \rangle =
+\langle qp||sr \rangle =
+- \langle pq||sr \rangle =
+- \langle qp || rs \rangle , \label{dirac_symetry}
+\end{equation}
+and 
+
+\begin{equation}
+\langle pq || rs \rangle = \langle rs || pq \rangle ,
+\end{equation}
+
+making eightfold symmetry. Using Eq. \eqref{dirac_symetry}, re indexing terms and combining leaves the two electron part as the following:
+
+\begin{align}
+\frac{1}{4} \sum_{pqrs} \langle pq||rs \rangle \textbf{a}^{\dag}_p \textbf{a}^{\dag}_q \textbf{a}_s \textbf{a}_r = & \frac{1}{4}
+\sum_{pqrs} \langle pq||rs \rangle \{\textbf{a}^{\dag}_p \textbf{a}^{\dag}_q \textbf{a}_s \textbf{a}_r\}
+ \\ &
++ \sum_{ipr} \langle pi||ri \rangle \{\textbf{a}^{\dag}_p \textbf{a}_r \} \nonumber \\ &
++ \frac{1}{2} \sum_{ij} \langle ij||ij \rangle . \nonumber
+\end{align}
+This can be inserted in Eq. \eqref{temp_h}.
+
+\begin{align}
+\textbf{H} = & \sum_{pq} <p|\textbf{h}|q> 
+\{\textbf{a}^{\dag}_p \textbf{a}_q \}
++ \sum_i \langle i|h|i \rangle
+ + \frac{1}{4}
+\sum_{pqrs} \langle pq||rs \rangle \{\textbf{a}^{\dag}_p \textbf{a}^{\dag}_q \textbf{a}_s \textbf{a}_r\}
+ \\ &
++ \sum_{ipr} \langle pi||ri \rangle \{\textbf{a}^{\dag}_p \textbf{a}_r \}
++ \frac{1}{2} \sum_{ij} \langle ij||ij \rangle . \nonumber
+\end{align}
+The first and fourth term on the right hand side are the normal ordered form of the Fock operator. If we also include the second term we have the HF energy.
+
+\begin{equation}
+\textbf{H} = \sum_{pq} f_{pq} 
+\{\textbf{a}^{\dag}_p \textbf{a}_q \}
+ + \frac{1}{4}
+\sum_{pqrs} \langle pq||rs \rangle \{\textbf{a}^{\dag}_p \textbf{a}^{\dag}_q \textbf{a}_s \textbf{a}_r\}
++ \langle \Psi_{HF} | \textbf{H} |\Psi_{HF} \rangle .
+\end{equation}
+We rename these terms.
+
+\begin{equation}
+\textbf{H} = \textbf{F}_N + \textbf{V}_N + \langle \Psi_{HF} | \textbf{H} |\Psi_{HF} \rangle .
+\end{equation}
+The normal ordered Hamiltonian is defined from this:
+
+\begin{equation}
+\textbf{H}_N \equiv 
+\textbf{H} - \langle \Psi_{HF} | \textbf{H} |\Psi_{HF} \rangle = 
+\textbf{F}_N + \textbf{V}_N . \label{normal_order_hamiltonian}
+\end{equation}
+
+\subsection{CCSD Hamiltonian}
+
+The CCSD Hamiltonian is now defined as such
+
+\begin{equation}
+\bar{H} \equiv e^{-\textbf{T}} \textbf{H}_N e^{\textbf{T}}  .
+\end{equation}
+Using the CCSD cluster operator, $\textbf{T} = \textbf{T}_1 + \textbf{T}_2$. This can be inserted in equation Eq. \eqref{variationalccsd}. 
+
+\begin{align}
+\bar{H} = & 
+\textbf{H}_N 
++ \left[ \textbf{H}_N, \textbf{T}_1 \right] 
++ \left[ \textbf{H}_N, \textbf{T}_2 \right] 
++ \frac{1}{2} \left[ [\textbf{H}_N, \textbf{T}_1], \textbf{T}_1 \right]  \\ &
++ \frac{1}{2} \left[ [\textbf{H}_N, \textbf{T}_1], \textbf{T}_2  \right]
++ \frac{1}{2} \left[ [\textbf{H}_N, \textbf{T}_2], \textbf{T}_1 \right]
++ \frac{1}{2} \left[ [\textbf{H}_N, \textbf{T}_2], \textbf{T}_2 \right] \dots \nonumber
+\end{align}
+$\textbf{T}_1$ and $\textbf{T}_2$ does commute, so we can combine terms. The full $\bar{H}$ then becomes:
+
+\begin{align}
+\bar{H} = & 
+\textbf{H}_N 
++ \left[ \textbf{H}_N, \textbf{T}_1 \right] 
++ \left[ \textbf{H}_N, \textbf{T}_2 \right] 
++ \frac{1}{2} \left[ [\textbf{H}_N, \textbf{T}_1], \textbf{T}_1 \right] \label{temp_hamil_ccsd} \\ &
++ \left[ [\textbf{H}_N, \textbf{T}_1], \textbf{T}_2  \right]
++ \frac{1}{2} \left[ [\textbf{H}_N, \textbf{T}_2], \textbf{T}_2 \right] \nonumber \\ &
++ \frac{1}{6} \left[ [ [ \textbf{H}_N,[\textbf{T}_1], \textbf{T}_1], \textbf{T}_1 \right]
++ \frac{1}{6} \left[ [ [ \textbf{H}_N,[\textbf{T}_2], \textbf{T}_2], \textbf{T}_2 \right] \nonumber \\ &
++ \frac{1}{2} \left[ [ [ \textbf{H}_N,[\textbf{T}_1], \textbf{T}_1], \textbf{T}_2 \right]
++ \frac{1}{2} \left[ [ [ \textbf{H}_N,[\textbf{T}_1], \textbf{T}_2], \textbf{T}_2 \right] \nonumber \\ &
++ \frac{1}{24} \left[ [ [ [\textbf{H}_N, \textbf{T}_1], \textbf{T}_1], \textbf{T}_1], \textbf{T}_1  \right]
++ \frac{1}{24} \left[ [ [ [\textbf{H}_N, \textbf{T}_2], \textbf{T}_2], \textbf{T}_2], \textbf{T}_2  \right] \nonumber \\ &
++ \frac{1}{6} \left[ [ [ [\textbf{H}_N, \textbf{T}_1], \textbf{T}_1], \textbf{T}_1], \textbf{T}_2  \right]
++ \frac{1}{6} \left[ [ [ [\textbf{H}_N, \textbf{T}_1], \textbf{T}_1], \textbf{T}_2], \textbf{T}_2  \right] \nonumber \\ &
++ \frac{1}{4} \left[ [ [ [\textbf{H}_N, \textbf{T}_1], \textbf{T}_2], \textbf{T}_2], \textbf{T}_2  \right] . \nonumber
+\end{align}
+$\bar{H}$ will still analytically truncates after up to and including four nested commutators. When using $\textbf{H}_N$ it is better to rewrite Eqs. \eqref{t1defi} and \eqref{t2defi} using contractions.
+
+\begin{equation}
+\textbf{T}_1 \equiv \sum_{ai} t_i^a \textbf{a}^{\dag}_a \textbf{a}_i = \sum_{ai} \left( t_i^a \{\textbf{a}^{\dag}_a \textbf{a}_i\} + \{
+\contraction{}{\textbf{a}^{\dag}_a}{}{\textbf{a}_i}
+\textbf{a}^{\dag}_a \textbf{a}_i
+\} \right) = \sum_{ai} t_i^a \{\textbf{a}^{\dag}_a \textbf{a}_i\} .
+\end{equation}
+The contraction term will be 0 based the discussion before Eq. \eqref{fermi1}. Also similarly for $\textbf{T}_2$
+
+\begin{equation}
+\textbf{T}_2 = \frac{1}{4} \sum_{abij} \{
+\textbf{a}^{\dag}_a \textbf{a}^{\dag}_b
+\textbf{a}_i \textbf{a}_j \} .
+\end{equation}
+The commutators can then be calculated, starting with $[\textbf{H}_N, \textbf{T}_1]$.
+
+\begin{equation}
+[\textbf{H}_N, \textbf{T}_1] = \textbf{H}_N \textbf{T}_1 - \textbf{T}_1 \textbf{H}_N .
+\end{equation}
+Using the definition of contractions on both these terms we can simplify this expression.
+
+\begin{align}
+[\textbf{H}_N, \textbf{T}_1] & =
+\left( \{\textbf{H}_N\textbf{T}_1\} + \{
+\contraction{}{\textbf{H}_N}{}{\textbf{T}_1}
+\textbf{H}_N\textbf{T}_1\} \right) - \left(\{\textbf{T}_1\textbf{H}_N\} + \{
+\contraction{}{\textbf{T}_1}{}{\textbf{H}_N}
+\textbf{T}_1\textbf{H}_N\} \right) \nonumber \\ &
+= \{
+\contraction{}{\textbf{H}_N}{}{\textbf{T}_1}
+\textbf{H}_N\textbf{T}_1\}
+- \{
+\contraction{}{\textbf{T}_1}{}{\textbf{H}_N}
+\textbf{T}_1\textbf{H}_N\} .
+\end{align}
+Eqs. \eqref{fermi1} and \eqref{fermi2} explains the only terms that will not be 0 when calculating the contractions. $\{ \contraction{}{\textbf{T}_1}{}{\textbf{H}_N}
+\textbf{T}_1\textbf{H}_N\}$ will be 0 since $\textbf{T}_1$ does not contain any creation or annihilation operator that when placed on the left creates a non-zero contraction when using Wick's Theorem. The same argument applies to $\textbf{T}_2$. 
+
+\begin{equation}
+[\textbf{H}_N, \textbf{T}_1] = 
+\{
+\contraction{}{\textbf{H}_N}{}{\textbf{T}_1}
+\textbf{H}_N\textbf{T}_1\} 
+= \left( \textbf{H}_N \textbf{T}_1 \right)_C
+.
+\end{equation}
+
+\begin{equation}
+[\textbf{H}_N, \textbf{T}_2] = 
+\{
+\contraction{}{\textbf{H}_N}{}{\textbf{T}_2}
+\textbf{H}_N\textbf{T}_2\} 
+= \left( \textbf{H}_N \textbf{T}_2 \right)_C
+.
+\end{equation}
+It then becomes clear that the only surviving terms when calculating all the commutators will be terms with $\textbf{H}_N$ in the leftmost position. \\
+
+A new notation is also introduced, $()_C$. This notations means that each cluster operator inside the parentheses should have at least one contraction each to $\textbf{H}_N$ when applying Wick's Theorem. This holds for up to four cluster operators, which makes the truncation even more sensible. \\
+
+The final form of $\bar{H}$ becomes
+
+\begin{equation}
+\begin{split}
+\bar{H} = 
+\big( \textbf{H}_N + \textbf{H}_N \textbf{T}_1 + \textbf{H}_N \textbf{T}_2
++ \frac{1}{2} \textbf{H}_N \textbf{T}_1^2
++ \frac{1}{2} \textbf{H}_N \textbf{T}_2^2
++ \textbf{H}_N \textbf{T}_1 \textbf{T}_2 \\
++ \frac{1}{6} \textbf{H}_N \textbf{T}_1^3
++ \frac{1}{6} \textbf{H}_N \textbf{T}_2^3
++ \frac{1}{2} \textbf{H}_N \textbf{T}_1^2 \textbf{T}_2
++ \frac{1}{2} \textbf{H}_N \textbf{T}_1 \textbf{T}_2^2 \\ 
++ \frac{1}{24} \textbf{H}_N \textbf{T}_1^4
++ \frac{1}{24} \textbf{H}_N \textbf{T}_2^4
++ \frac{1}{4} \textbf{H}_N \textbf{T}_1^2 \textbf{T}_2^2
++ \frac{1}{6} \textbf{H}_N \textbf{T}_1^3 \textbf{T}_2
++ \frac{1}{6} \textbf{H}_N \textbf{T}_1 \textbf{T}_2^3 \big)_C  .
+\end{split} \label{CCSDHamiltonian}
+\end{equation}
+
+\subsection{CCSD Energy}
+Using the definition of $\textbf{H}_N$, Eq. \eqref{normal_order_hamiltonian}, and $\bar{H}$, Eq. \eqref{CCSDHamiltonian}, we can now construct a programmable expression for the energy. 
+
+\begin{equation}
+E_{CCSD} - E_0 = \langle \Psi_0 | \bar{H} | \Psi_0 \rangle .
+\end{equation}
+The terms in Eq. \eqref{CCSDHamiltonian} are here calculated separately. 
+
+\begin{equation}
+\langle \Psi_0 | \textbf{H}_N | \Psi_0 \rangle = 0 .
+\end{equation}
+From the construction of the normal ordered Hamiltonian this term will be 0.
+
+\begin{align}
+\langle \Psi_0 | (\textbf{H}_N \textbf{T}_1)_C | \Psi_0 \rangle & = \langle \Psi_0 | \left((\textbf{F}_N + \textbf{V}_N ) \textbf{T}_1 \right)_C | \Psi_0 \rangle \nonumber \\ &
+= \langle \Psi_0 | (\textbf{F}_N \textbf{T}_1)_C | \Psi_0 \rangle + \langle \Psi_0 | (\textbf{V}_N \textbf{T}_1)_C | \Psi_0 \rangle . \label{ene_1}
+\end{align}
+
+\begin{equation}
+(\textbf{F}_N \textbf{T}_1)_C  = \sum_{pq} \sum_{ai} f_{pq} t_i^a  \{ \textbf{a}^{\dag}_p \textbf{a}_q\}  \{\textbf{a}^{\dag}_a \textbf{a}_i \} . 
+\end{equation}
+Wick's Theorem is applied to simplify the expression. Only non zero terms are included.
+
+\begin{align}
+\{ \textbf{a}^{\dag}_p \textbf{a}_q\}  \{\textbf{a}^{\dag}_a \textbf{a}_i \} & = &
+\{ \textbf{a}^{\dag}_p \textbf{a}_q \textbf{a}^{\dag}_a \textbf{a}_i \} + \{ \textbf{a}^{\dag}_p
+\contraction{}{\textbf{a}_q}{}{\textbf{a}^{\dag}_a}
+\textbf{a}_q \textbf{a}^{\dag}_a
+\textbf{a}_i \}  \\ & &
++  \{
+\contraction{}{\textbf{a}^{\dag}_p}{ \textbf{a}_q \textbf{a}^{\dag}_a}{\textbf{a}_i}
+\textbf{a}^{\dag}_p \textbf{a}_q \textbf{a}^{\dag}_a \textbf{a}_i \} 
++ \{
+\contraction{}{\textbf{a}^{\dag}_p}{\textbf{a}_q \textbf{a}^{\dag}_a}{\textbf{a}_i}
+\contraction{\textbf{a}^{\dag}_p}{\textbf{a}_q}{} {\textbf{a}^{\dag}_a}
+\textbf{a}^{\dag}_p \textbf{a}_q \textbf{a}^{\dag}_a \textbf{a}_i \} \nonumber \\ & = &
+\{ \textbf{a}^{\dag}_p \textbf{a}_q \textbf{a}^{\dag}_a \textbf{a}_i \} + \delta_{pi} \{\textbf{a}_q \textbf{a}_a^{\dag} \} \nonumber \\ & &
++ \delta_{qa} \{\textbf{a}_p^{\dag} \textbf{a}_i \} 
++ \delta_{pi} \delta_{qa} . \nonumber
+\end{align}
+Inserting this gives 
+
+\begin{equation}
+(\textbf{F}_N \textbf{T}_1)_C = \sum_{pq} \sum_{ai} f_{pq} t_i^a \left(\{ \textbf{a}^{\dag}_p \textbf{a}_q \textbf{a}^{\dag}_a \textbf{a}_i \} + \delta_{pi} \{\textbf{a}_q \textbf{a}_a^{\dag} \} 
++ \delta_{qa} \{\textbf{a}_p^{\dag} \textbf{a}_i \} 
++ \delta_{pi} \delta_{qa} \right) .
+\end{equation}
+When calculating $\langle \Psi_0 | (\textbf{F}_N \textbf{T}_1)_C | \Psi_0 \rangle$ only terms that solely consists of $\delta$'s will be non 0, since our basis is orthogonal. 
+
+\begin{equation}
+\langle \Psi_0 | (\textbf{F}_N \textbf{T}_1)_C | \Psi_0 \rangle =  \sum_{pq} \sum_{ai} f_{pq} t_i^a\delta_{pi} \delta_{qa} = \sum_{ai} f_{ai} t_i^a . \label{f_t1}
+\end{equation}
+$\langle \Psi_0 | (\textbf{V}_N \textbf{T}_1)_C | \Psi_0 \rangle$ must also be calculated.
+
+\begin{equation}
+(\textbf{V}_N \textbf{T}_1 )_C = \frac{1}{4} \sum_{pqrs} \sum_{ai} \langle pq||rs \rangle t_i^a \{\textbf{a}^{\dag}_p \textbf{a}^{\dag}_q \textbf{a}_s \textbf{a}_r \} \{\textbf{a}_a^{\dag} \textbf{a}_i \} .
+\end{equation}
+
+\begin{align}
+\{\textbf{a}^{\dag}_p \textbf{a}^{\dag}_q \textbf{a}_s \textbf{a}_r \} \{\textbf{a}_a^{\dag} \textbf{a}_i \} & = \{
+\textbf{a}^{\dag}_p \textbf{a}^{\dag}_q \textbf{a}_s \textbf{a}_r \textbf{a}_a^{\dag} \textbf{a}_i 
+\} 
++ 
+\{ \textbf{a}^{\dag}_p \textbf{a}^{\dag}_q
+\contraction{}{\textbf{a}_s}{\textbf{a}_r}{\textbf{a}_a^{\dag}}
+ \textbf{a}_s \textbf{a}_r \textbf{a}_a^{\dag}
+  \textbf{a}_i 
+\}  \\ &
++ 
+\{ \textbf{a}^{\dag}_p \textbf{a}^{\dag}_q \textbf{a}_s
+\contraction{}{\textbf{a}_r}{}{\textbf{a}_a^{\dag}}
+\textbf{a}_r \textbf{a}_a^{\dag}
+\textbf{a}_i
+\}
++ \{ \textbf{a}^{\dag}_p
+\contraction{}{\textbf{a}^{\dag}_q}{\textbf{a}_s \textbf{a}_r \textbf{a}_a^{\dag}}{\textbf{a}_i}
+\textbf{a}^{\dag}_q \textbf{a}_s \textbf{a}_r \textbf{a}_a^{\dag} \textbf{a}_i \} \nonumber \\ &
++ \{
+\contraction{}{\textbf{a}^{\dag}_p}{\textbf{a}^{\dag}_q \textbf{a}_s \textbf{a}_r \textbf{a}_a^{\dag}}{\textbf{a}_i}
+\textbf{a}^{\dag}_p \textbf{a}^{\dag}_q \textbf{a}_s \textbf{a}_r \textbf{a}_a^{\dag} \textbf{a}_i
+\}
++ \{
+\contraction{}{\textbf{a}^{\dag}_p}{\textbf{a}^{\dag}_q \textbf{a}_s \textbf{a}_r \textbf{a}_a^{\dag}}{\textbf{a}_i}
+\contraction{\textbf{a}^{\dag}_p \textbf{a}^{\dag}_q \textbf{a}_s}{\textbf{a}_r}{}{\textbf{a}_a^{\dag}}
+\textbf{a}^{\dag}_p \textbf{a}^{\dag}_q \textbf{a}_s \textbf{a}_r \textbf{a}_a^{\dag} \textbf{a}_i
+\} \nonumber \\ &
++ \{
+\contraction{}{\textbf{a}^{\dag}_p}{\textbf{a}^{\dag}_q \textbf{a}_s \textbf{a}_r \textbf{a}_a^{\dag}}{\textbf{a}_i}
+\contraction{\textbf{a}^{\dag}_p \textbf{a}^{\dag}_q}{\textbf{a}_s}{\textbf{a}_r}{\textbf{a}_a^{\dag}}
+\textbf{a}^{\dag}_p \textbf{a}^{\dag}_q \textbf{a}_s \textbf{a}_r \textbf{a}_a^{\dag} \textbf{a}_i
+\} . \nonumber
+\end{align}
+From the derivation of $\langle \Psi_0 | (\textbf{F}_N \textbf{T}_1)_C | \Psi_0 \rangle$ we noticed that the only term that survived was the term where every construction/annihilation operator was linked by a contraction. In this case we have no such terms. Hence the contribution from $\langle \Psi_0 | (\textbf{V}_N \textbf{T}_1)_C | \Psi_0 \rangle$ will be 0. \\
+
+Inserting Eq. \eqref{f_t1} and $\langle \Psi_0 | (\textbf{V}_N \textbf{T}_1)_C | \Psi_0 \rangle = 0$ into Eq. \eqref{ene_1} gives 
+
+\begin{equation}
+\langle \Psi_0 | (\textbf{H}_N \textbf{T}_1)_C | \Psi_0 \rangle = \sum_{ai} f_{ai} t_i^a . \label{Energy_Contribution_1}
+\end{equation}
+Here the contribution from $\langle \Psi_0 | (\textbf{H}_N \textbf{T}_2)_C | \Psi_0 \rangle$ is calculated.
+
+\begin{equation}
+\langle \Psi_0 | (\textbf{F}_N \textbf{T}_2)_C | \Psi_0 \rangle = \frac{1}{4} \sum_{pq} \sum_{abij} f_{pq} t_{ij}^{ab} \{ \textbf{a}^{\dag}_p \textbf{a}_q \}
+\{ \textbf{a}^{\dag}_a \textbf{a}^{\dag}_b \textbf{a}_i \textbf{a}_j \} .
+\end{equation}
+This is again a similar situation that will result in 0 contribution. The reason is that any two operators $\textbf{A}$ and $\textbf{B}$ that contain a different number of annihilation/creation operators will not create any fully contracted terms (terms that solely consists of $\delta$'s) when applying Wick's Theorem. This means because of orthogonality the contribution to $E_{CCSD}$ from terms like this will always be 0. \\
+
+$\langle \Psi_0 | (\textbf{V}_N \textbf{T}_2)_C | \Psi_0 \rangle$ however has an equal number of operators. From this we will have a contribution.
+
+\begin{equation}
+\langle \Psi_0 | (\textbf{V}_N \textbf{T}_2)_C | \Psi_0 \rangle = \frac{1}{16} \sum_{pqrs} \sum_{abij} \langle pq||rs \rangle t_{ij}^{ab} \langle \Psi_0|
+\{
+\textbf{a}^{\dag}_p \textbf{a}^{\dag}_q
+\textbf{a}_s \textbf{a}_r \}
+\{
+\textbf{a}^{\dag}_a \textbf{a}^{\dag}_b
+\textbf{a}_j \textbf{a}_i \}
+| \Psi_0 \rangle \nonumber
+\end{equation}
+Wick's Theorem is applied. Only the four terms that are fully contracted and non-zero are listed.
+
+\begin{align}
+\{
+\textbf{a}^{\dag}_p \textbf{a}^{\dag}_q
+\textbf{a}_s \textbf{a}_r \}
+\{
+\textbf{a}^{\dag}_a \textbf{a}^{\dag}_b
+\textbf{a}_i \textbf{a}_j \} & = &
+\{
+\contraction[5ex]{\textbf{a}^{\dag}_p \textbf{a}^{\dag}_q 
+\textbf{a}_s}{\textbf{a}_r}{}{\textbf{a}^{\dag}_a}
+\contraction[4ex]{\textbf{a}^{\dag}_p \textbf{a}^{\dag}_q}{\textbf{a}_s}{\textbf{a}_r
+\textbf{a}^{\dag}_a}{\textbf{a}^{\dag}_b}
+\contraction[2ex]{\textbf{a}^{\dag}_p}{\textbf{a}^{\dag}_q}{\textbf{a}_s \textbf{a}_r
+\textbf{a}^{\dag}_a \textbf{a}^{\dag}_b}{\textbf{a}_j}
+\contraction{}{\textbf{a}^{\dag}_p}{\textbf{a}^{\dag}_q 
+\textbf{a}_s \textbf{a}_r \textbf{a}^{\dag}_a \textbf{a}^{\dag}_b \textbf{a}_j}{\textbf{a}_i}
+\textbf{a}^{\dag}_p \textbf{a}^{\dag}_q 
+\textbf{a}_s \textbf{a}_r
+\textbf{a}^{\dag}_a \textbf{a}^{\dag}_b
+\textbf{a}_j \textbf{a}_i
+\}
++
+\{
+\contraction[4ex]{\textbf{a}^{\dag}_p \textbf{a}^{\dag}_q}{\textbf{a}_s}{\textbf{a}_r}{\textbf{a}^{\dag}_a}
+\contraction[5ex]{\textbf{a}^{\dag}_p \textbf{a}^{\dag}_q 
+\textbf{a}_s}{\textbf{a}_r}{\textbf{a}^{\dag}_a}{\textbf{a}^{\dag}_b}
+\contraction[2ex]{\textbf{a}^{\dag}_p}{\textbf{a}^{\dag}_q}{\textbf{a}_s \textbf{a}_r
+\textbf{a}^{\dag}_a \textbf{a}^{\dag}_b}{\textbf{a}_j}
+\contraction{}{\textbf{a}^{\dag}_p}{\textbf{a}^{\dag}_q 
+\textbf{a}_s \textbf{a}_r \textbf{a}^{\dag}_a \textbf{a}^{\dag}_b \textbf{a}_j}{\textbf{a}_i}
+\textbf{a}^{\dag}_p \textbf{a}^{\dag}_q 
+\textbf{a}_s \textbf{a}_r
+\textbf{a}^{\dag}_a \textbf{a}^{\dag}_b
+\textbf{a}_j \textbf{a}_i
+\} \nonumber \\ & &
+\{
+\contraction[5ex]{\textbf{a}^{\dag}_p \textbf{a}^{\dag}_q 
+\textbf{a}_s}{\textbf{a}_r}{}{\textbf{a}^{\dag}_a}
+\contraction[4ex]{\textbf{a}^{\dag}_p \textbf{a}^{\dag}_q}{\textbf{a}_s}{\textbf{a}_r
+\textbf{a}^{\dag}_a}{\textbf{a}^{\dag}_b}
+\contraction[2ex]{\textbf{a}^{\dag}_p}{\textbf{a}^{\dag}_q}{\textbf{a}_s \textbf{a}_r
+\textbf{a}^{\dag}_a \textbf{a}^{\dag}_b\textbf{a}_j}{\textbf{a}_i}
+\contraction{}{\textbf{a}^{\dag}_p}{\textbf{a}^{\dag}_q 
+\textbf{a}_s \textbf{a}_r \textbf{a}^{\dag}_a \textbf{a}^{\dag}_b}{\textbf{a}_j}
+\textbf{a}^{\dag}_p \textbf{a}^{\dag}_q 
+\textbf{a}_s \textbf{a}_r
+\textbf{a}^{\dag}_a \textbf{a}^{\dag}_b
+\textbf{a}_j \textbf{a}_i
+\}
++
+\{
+\contraction[4ex]{\textbf{a}^{\dag}_p \textbf{a}^{\dag}_q}{\textbf{a}_s}{\textbf{a}_r}{\textbf{a}^{\dag}_a}
+\contraction[5ex]{\textbf{a}^{\dag}_p \textbf{a}^{\dag}_q 
+\textbf{a}_s}{\textbf{a}_r}{\textbf{a}^{\dag}_a}{\textbf{a}^{\dag}_b}
+\contraction[2ex]{\textbf{a}^{\dag}_p}{\textbf{a}^{\dag}_q}{\textbf{a}_s \textbf{a}_r
+\textbf{a}^{\dag}_a \textbf{a}^{\dag}_b\textbf{a}_j}{\textbf{a}_i}
+\contraction{}{\textbf{a}^{\dag}_p}{\textbf{a}^{\dag}_q 
+\textbf{a}_s \textbf{a}_r \textbf{a}^{\dag}_a \textbf{a}^{\dag}_b}{\textbf{a}_j}
+\textbf{a}^{\dag}_p \textbf{a}^{\dag}_q 
+\textbf{a}_s \textbf{a}_r
+\textbf{a}^{\dag}_a \textbf{a}^{\dag}_b
+\textbf{a}_j \textbf{a}_i
+\} \nonumber \\
+& = & \delta_{pi} \delta_{qj} \delta_{sb} \delta_{ra} 
+- \delta_{pi} \delta_{gj} \delta_{rb} \delta_{sa}
++ \delta_{pj} \delta_{qi} \delta_{rb} \delta_{sa}
+- \delta_{pj} \delta_{qi} \delta_{ra} \delta_{sb} .
+\end{align}
+Inserting this provides
+
+\begin{align}
+\langle \Psi_0 | (\textbf{V}_N \textbf{T}_2)_C | \Psi_0 \rangle & =  \frac{1}{16} \sum_{pqrs} \sum_{abij}  \langle pq||rs \rangle t_{ij}^{ab} \langle \Psi_0|
+\delta_{pi} \delta_{qj} \delta_{sb} \delta_{ra} 
+- \delta_{pi} \delta_{gj} \delta_{rb} \delta_{sa}\nonumber \\ & 
++ \delta_{pj} \delta_{qi} \delta_{rb} \delta_{sa}
+- \delta_{pj} \delta_{qi} \delta_{ra} \delta_{sb}
+| \Psi_0 \rangle \nonumber \\ &
+= \frac{1}{16} \sum_{abij} ( 
+\langle ij || ab \rangle
+- \langle ij || ba \rangle
++ \langle ji || ba \rangle
+- \langle ji || ab \rangle ) t_{ij}^{ab} \nonumber \\ &
+= \frac{1}{4} \sum_{abij} t_{ij}^{ab} \langle ij||ab \rangle .
+\end{align}
+Here symmetry considerations was used. This means 
+
+\begin{equation}
+\langle \Psi_0 | (\textbf{H}_N \textbf{T}_2)_C | \Psi_0 \rangle = \frac{1}{4} \sum_{abij} t_{ij}^{ab} \langle ij||ab \rangle . \label{Energy_Contribution_2}
+\end{equation}
+Next contribution from $\langle \Psi_0 | (\textbf{H}_N \textbf{T}_1^2)_C | \Psi_0 \rangle$. From the expression of $\bar{H}$ there is a $\frac{1}{2}$ in front of this term.
+
+\begin{align}
+\frac{1}{2} \langle \Psi_0 | (\textbf{H}_N \textbf{T}_1^2)_C | \Psi_0 \rangle = & \frac{1}{8} \sum_{pqrs} \sum_{ai} \sum_{bj} \langle pq || rs \rangle t_i^a t_j^b \nonumber \\ & 
+\langle \Psi_0| 
+ \{\textbf{a}^{\dag}_a \textbf{a}^{\dag}_b \textbf{a}_i \textbf{a}_j \}
+\{\textbf{a}^{\dag}_a \textbf{a}_i \}
+\{\textbf{a}^{\dag}_b \textbf{a}_j \}
+| \Psi_0 \rangle .
+\end{align}
+Again Wick's Theorem is used. We note that from $\bar{H}$ there are four creation/annihilation operators. From each $\textbf{T}_1$ there are two, and combined from all there are four. This means we will have non-zero terms, these are listed here.
+
+\begin{align}
+\{\textbf{a}^{\dag}_a \textbf{a}^{\dag}_b \textbf{a}_i \textbf{a}_j \}
+\{\textbf{a}^{\dag}_a \textbf{a}_i \}
+\{\textbf{a}^{\dag}_b \textbf{a}_j \}
+ = &
+\{
+\contraction{}{\textbf{a}^{\dag}_p}{\textbf{a}^{\dag}_q 
+\textbf{a}_s \textbf{a}_r
+\textbf{a}^{\dag}_a \textbf{a}_i
+\textbf{a}^{\dag}_b}{\textbf{a}_j}
+\contraction[2ex]{\textbf{a}^{\dag}_p}{\textbf{a}^{\dag}_q}{\textbf{a}_s \textbf{a}_r
+\textbf{a}^{\dag}_a}{\textbf{a}_i}
+\contraction[4ex]{\textbf{a}^{\dag}_p \textbf{a}^{\dag}_q}{\textbf{a}_s}{\textbf{a}_r
+\textbf{a}^{\dag}_a \textbf{a}_i}{\textbf{a}^{\dag}_b}
+\contraction[5ex]{\textbf{a}^{\dag}_p \textbf{a}^{\dag}_q 
+\textbf{a}_s}{\textbf{a}_r}{}{\textbf{a}^{\dag}_a}
+\textbf{a}^{\dag}_p \textbf{a}^{\dag}_q 
+\textbf{a}_s \textbf{a}_r
+\textbf{a}^{\dag}_a \textbf{a}_i
+\textbf{a}^{\dag}_b \textbf{a}_j 
+\}
++ 
+\{
+\contraction[4ex]{\textbf{a}^{\dag}_p \textbf{a}^{\dag}_q}{\textbf{a}_s}{\textbf{a}_r
+\textbf{a}^{\dag}_a \textbf{a}_i}{\textbf{a}^{\dag}_b}
+\contraction[5ex]{\textbf{a}^{\dag}_p \textbf{a}^{\dag}_q 
+\textbf{a}_s}{\textbf{a}_r}{}{\textbf{a}^{\dag}_a}
+\contraction{}{\textbf{a}^{\dag}_p}{\textbf{a}^{\dag}_q 
+\textbf{a}_s \textbf{a}_r
+\textbf{a}^{\dag}_a}{\textbf{a}_i}
+\contraction[2ex]{\textbf{a}^{\dag}_p}{\textbf{a}^{\dag}_q}{\textbf{a}_s \textbf{a}_r
+\textbf{a}^{\dag}_a \textbf{a}_i
+\textbf{a}^{\dag}_b}{\textbf{a}_j}
+\textbf{a}^{\dag}_p \textbf{a}^{\dag}_q 
+\textbf{a}_s \textbf{a}_r
+\textbf{a}^{\dag}_a \textbf{a}_i
+\textbf{a}^{\dag}_b \textbf{a}_j 
+\} \nonumber \\ & 
+\{
+\contraction[4ex]{\textbf{a}^{\dag}_p \textbf{a}^{\dag}_q}{\textbf{a}_s}{\textbf{a}_r
+\textbf{a}^{\dag}_a \textbf{a}_i}{\textbf{a}^{\dag}_b}
+\contraction[5ex]{\textbf{a}^{\dag}_p \textbf{a}^{\dag}_q 
+\textbf{a}_s}{\textbf{a}_r}{}{\textbf{a}^{\dag}_a}
+\contraction{}{\textbf{a}^{\dag}_p}{\textbf{a}^{\dag}_q 
+\textbf{a}_s \textbf{a}_r
+\textbf{a}^{\dag}_a}{\textbf{a}_i}
+\contraction[2ex]{\textbf{a}^{\dag}_p}{\textbf{a}^{\dag}_q}{\textbf{a}_s \textbf{a}_r
+\textbf{a}^{\dag}_a \textbf{a}_i
+\textbf{a}^{\dag}_b}{\textbf{a}_j}
+\textbf{a}^{\dag}_p \textbf{a}^{\dag}_q 
+\textbf{a}_s \textbf{a}_r
+\textbf{a}^{\dag}_a \textbf{a}_i
+\textbf{a}^{\dag}_b \textbf{a}_j 
+\}
++
+\{
+\contraction[4ex]{\textbf{a}^{\dag}_p \textbf{a}^{\dag}_q}{\textbf{a}_s}{\textbf{a}_r}{\textbf{a}^{\dag}_a}
+\contraction[5ex]{\textbf{a}^{\dag}_p \textbf{a}^{\dag}_q 
+\textbf{a}_s}{\textbf{a}_r}{\textbf{a}^{\dag}_a}{\textbf{a}^{\dag}_b}
+\contraction[2ex]{\textbf{a}^{\dag}_p}{\textbf{a}^{\dag}_q}{\textbf{a}_s \textbf{a}_r
+\textbf{a}^{\dag}_a \textbf{a}^{\dag}_b\textbf{a}_j}{\textbf{a}_i}
+\contraction{}{\textbf{a}^{\dag}_p}{\textbf{a}^{\dag}_q 
+\textbf{a}_s \textbf{a}_r \textbf{a}^{\dag}_a \textbf{a}^{\dag}_b}{\textbf{a}_j}
+\textbf{a}^{\dag}_p \textbf{a}^{\dag}_q 
+\textbf{a}_s \textbf{a}_r
+\textbf{a}^{\dag}_a \textbf{a}^{\dag}_b
+\textbf{a}_j \textbf{a}_i
+\} \nonumber \\
+ = & \delta_{pi} \delta_{qj} \delta_{sb} \delta_{ra} 
+- \delta_{pi} \delta_{gj} \delta_{rb} \delta_{sa}
++ \delta_{pj} \delta_{qi} \delta_{rb} \delta_{sa}
+- \delta_{pj} \delta_{qi} \delta_{ra} \delta_{sb} .
+\end{align}
+Which is a result we have seen before in Eq. \eqref{Energy_Contribution_2}, the only difference is the amplitudes and the factor $\frac{1}{2}$.
+
+\begin{equation}
+\langle \Psi_0 | (\textbf{H}_N \textbf{T}_1^2)_C | \Psi_0 \rangle = \frac{1}{2} \sum_{abij} t_{i}^{a} t_j^b \langle ij||ab \rangle . \label{Energy_Contribution_3}
+\end{equation}
+The next term is $\langle \Psi_0 | (\textbf{H}_N \textbf{T}_2^2)_C | \Psi_0 \rangle$. $\textbf{H}_N$ still only have four creation/annihilation operators. However now we have 8 in total from the cluster operators. This means we cannot have fully contracted terms, which means the entire contribution to $E_{CCSD}$ will be 0. \\
+
+This argument will hold true for every single remaining term. Meaning we now have an expression for the energy from Eqs. \eqref{Energy_Contribution_1}, \eqref{Energy_Contribution_2} and \eqref{Energy_Contribution_3}.
+
+\begin{equation}
+E_{CCSD} = E_0 + \sum_{ai} f_{ai} t_i^a + \frac{1}{4} \sum_{abij} \langle ij||ab \rangle t_{ij}^{ab} + \frac{1}{2} \sum_{abij} \langle ij || ab \rangle t_i^a t_j^b . \label{CCSD_TOTAL_ENERGY}
+\end{equation}
+Here all factors are known except for $t_i^a$ and $t_{ij}^{ab}$. These must be determined.
+
+\subsection{$t_i^a$ amplitudes}
+We can find expressions for $t_i^a$ by calculating $\langle \Psi_i^a | \bar{H} | \Psi_0 \rangle = 0$. The notation $\Psi_i^a$ means a state with one hole state and one orbital state. This will be an excited state and we did assume orthogonality. The mathematics of this excited state can be described as such
+
+\begin{equation}
+\langle \Psi_i^a | = \langle \Psi_0 | \textbf{a}^{\dag}_i \textbf{a}_a . \label{first_excited_stats}
+\end{equation}
+A creation operator working to the left, on a bra, becomes an annihilation operator. $\langle \Psi_i^a | \bar{H} | \Psi_0 \rangle = 0$ can be solved in the same manner as we did for the energy. Starting with the first term $\langle \Psi_i^a | \textbf{H}_N | \Psi_0 \rangle$.
+
+\subsubsection{$\langle \Psi_i^a | \textbf{H}_N | \Psi_0 \rangle$}
+
+\begin{align}
+\langle \Psi_i^a | \textbf{H}_N | \Psi_0 \rangle & = 
+\sum_{pq} f_{pq} \langle \Psi_0| \{ \textbf{a}^{\dag}_i \textbf{a}_a \} \{ \textbf{a}^{\dag}_p \textbf{a}_q \} | \Psi_0 \rangle \nonumber \\ &
++ \frac{1}{4} \sum_{pqrs} \langle pq||rs \rangle  \langle \Psi_0| \{ \textbf{a}^{\dag}_i \textbf{a}_a \} \{ \textbf{a}^{\dag}_p \textbf{a}^{\dag}_q \textbf{a}_r \textbf{a}_s \} | \Psi_0 \rangle .
+\end{align}
+Here the first term is from $\textbf{F}_N$ and the second term from $\textbf{V}_N$. The second term will be zero. Eq. \eqref{first_excited_stats} is inserted and Wick's Theorem applied.
+
+\begin{align}
+\Rightarrow \langle \Psi_i^a | \textbf{H}_N | \Psi_0 \rangle & = \sum_{pq} f_{pq} \langle \Psi_0| \{ \textbf{a}^{\dag}_i \textbf{a}_a \} \{ \textbf{a}^{\dag}_p \textbf{a}_q \} | \Psi_0 \rangle \nonumber \\ &
+= \sum_{pq} f_{pq} \langle \Psi_0| \{
+\contraction{}{\textbf{a}^{\dag}_i}{\textbf{a}_a \textbf{a}^{\dag}_p}{\textbf{a}_q}
+\contraction[3ex]{\textbf{a}^{\dag}_i}{\textbf{a}_a}{}{\textbf{a}^{\dag}_p}
+\textbf{a}^{\dag}_i \textbf{a}_a \textbf{a}^{\dag}_p \textbf{a}_q 
+ \} | \Psi_0 \rangle \nonumber \\ &
+= \sum_{pq} f_{pq} \delta_{iq} \delta_{ap} \nonumber \\ &
+= f_{ai} . \label{t1amp_1}
+\end{align}
+
+\subsubsection{$\langle \Psi_i^a | \textbf{H}_N \textbf{T}_1 | \Psi_0 \rangle$}
+
+The next term includes $(\textbf{H}_N \textbf{T}_1)_c = (\textbf{F}_N \textbf{T}_1)_c + (\textbf{V}_N \textbf{T}_1)_c$. The $()_c$ notation is here applied to specify that there must be at least one contraction reaching from $\textbf{H}_N$ to $\textbf{T}_1$.
+
+\begin{align}
+\langle \Phi_i^a | (\textbf{F}_N \textbf{T}_1)_c | \Phi_0 \rangle  & = 
+\sum_{pq} \sum_{jb} f_{pq} t_j^b \langle \Phi_0 | 
+\{ \textbf{a}^{\dag}_i \textbf{a}_a \} (\{ \textbf{a}^{\dag}_p \textbf{a}_q \} \{
+\textbf{a}^{\dag}_b \textbf{a}_j \})_c | \Phi_0 \rangle \nonumber \\ &
+= \sum_{pq} \sum_{jb} f_{pq} t_j^b \left(
+\{
+\contraction{\textbf{a}^{\dag}_i
+\textbf{a}_a}{\textbf{a}^{\dag}_p}{\textbf{a}_q
+\textbf{a}^{\dag}_b}{\textbf{a}_j}
+\contraction[3ex]{}{\textbf{a}^{\dag}_i}{\textbf{a}_a
+\textbf{a}^{\dag}_p}{\textbf{a}_q}
+\contraction[3ex]{\textbf{a}^{\dag}_i}{\textbf{a}_a}{\textbf{a}_q}{\textbf{a}^{\dag}_p \textbf{a}^{\dag}_b}
+\textbf{a}^{\dag}_i
+\textbf{a}_a
+\textbf{a}^{\dag}_p
+\textbf{a}_q
+\textbf{a}^{\dag}_b
+\textbf{a}_j
+\}
++
+\{
+\contraction[2ex]{}{\textbf{a}^{\dag}_i}{\textbf{a}_a
+\textbf{a}^{\dag}_p
+\textbf{a}_q
+\textbf{a}^{\dag}_b}{\textbf{a}_j}
+\contraction{\textbf{a}^{\dag}_i}{\textbf{a}_a}{}{\textbf{a}^{\dag}_p}
+\contraction{\textbf{a}^{\dag}_i
+\textbf{a}_a
+\textbf{a}^{\dag}_p}{\textbf{a}_q}{}{\textbf{a}^{\dag}_b}
+\textbf{a}^{\dag}_i
+\textbf{a}_a
+\textbf{a}^{\dag}_p
+\textbf{a}_q
+\textbf{a}^{\dag}_b
+\textbf{a}_j
+\} \right) \nonumber \\ &
+= \sum_{pq} \sum_{jb} f_{pq} t_j^b \left(
+\delta_{iq} \delta_{ab} \delta_{pj} + 
+\delta_{ij} \delta_{ap} \delta_{qb} \right) \nonumber \\ &
+= - \sum_j f_{ji} t_j^a + \sum_b f_{ab} t_i^b
+.
+\end{align}
+
+\begin{align}
+\langle \Phi_i^a | (\textbf{V}_N \textbf{T}_1)_c | \Phi_0 \rangle  & = \frac{1}{4} \sum_{pqrs} \sum_{jb} \langle pq||rs\rangle  t_j^b \langle \Phi_0 | 
+\{ \textbf{a}^{\dag}_i \textbf{a}_a \} (\{ \textbf{a}^{\dag}_p \textbf{a}^{\dag}_q
+\textbf{a}_s \textbf{a}_r \} \{
+\textbf{a}^{\dag}_b \textbf{a}_j \})_c | \Phi_0 \rangle \nonumber \\ &
+= \frac{1}{4} \sum_{pqrs} \sum_{jb} \langle pq||rs \rangle t_j^b 
+(
+\{
+\contraction[2ex]{}{\textbf{a}^{\dag}_i}{i \textbf{a}_a 
+\textbf{a}^{\dag}_p \textbf{a}^{\dag}_q}{\textbf{a}_s}
+\contraction{\textbf{a}^{\dag}_i}{\textbf{a}_a}{}{\textbf{a}^{\dag}_p}
+\contraction[3ex]{\textbf{a}^{\dag}_i \textbf{a}_a 
+\textbf{a}^{\dag}_p}{\textbf{a}^{\dag}_q}{\textbf{a}_s \textbf{a}_r
+\textbf{a}^{\dag}_b}{\textbf{a}_j}
+\contraction[5ex]{\textbf{a}^{\dag}_i \textbf{a}_a 
+\textbf{a}^{\dag}_p \textbf{a}^{\dag}_q
+\textbf{a}_s}{\textbf{a}_r}{}{\textbf{a}^{\dag}_b}
+\textbf{a}^{\dag}_i \textbf{a}_a 
+\textbf{a}^{\dag}_p \textbf{a}^{\dag}_q
+\textbf{a}_s \textbf{a}_r
+\textbf{a}^{\dag}_b \textbf{a}_j
+\} \nonumber \\ &
++ 
+\{
+\contraction[2ex]{}{\textbf{a}^{\dag}_i}{\textbf{a}_a 
+\textbf{a}^{\dag}_p \textbf{a}^{\dag}_q \textbf{a}_s}{\textbf{a}_r}
+\contraction{\textbf{a}^{\dag}_i}{\textbf{a}_a}{}{\textbf{a}^{\dag}_p}
+\contraction[3ex]{\textbf{a}^{\dag}_i \textbf{a}_a 
+\textbf{a}^{\dag}_p}{\textbf{a}^{\dag}_q}{\textbf{a}_s \textbf{a}_r
+\textbf{a}^{\dag}_b}{\textbf{a}_j}
+\contraction[5ex]{\textbf{a}^{\dag}_i \textbf{a}_a 
+\textbf{a}^{\dag}_p \textbf{a}^{\dag}_q
+}{\textbf{a}_s}{}{\textbf{a}_r \textbf{a}^{\dag}_b}
+\textbf{a}^{\dag}_i \textbf{a}_a 
+\textbf{a}^{\dag}_p \textbf{a}^{\dag}_q
+\textbf{a}_s \textbf{a}_r
+\textbf{a}^{\dag}_b \textbf{a}_j
+\}
++ 
+\{
+\contraction[2ex]
+{}
+{\textbf{a}^{\dag}_i}
+{i \textbf{a}_a \textbf{a}^{\dag}_p \textbf{a}^{\dag}_q}
+{\textbf{a}_s}
+\contraction
+{\textbf{a}^{\dag}_i}
+{\textbf{a}_a}
+{\textbf{a}^{\dag}_p}
+{\textbf{a}^{\dag}_q}
+\contraction[3ex]
+{\textbf{a}^{\dag}_i \textbf{a}_a}
+{\textbf{a}^{\dag}_p}
+{\textbf{a}^{\dag}_q \textbf{a}_s \textbf{a}_r \textbf{a}^{\dag}_b}{\textbf{a}_j}
+\contraction[5ex]{\textbf{a}^{\dag}_i \textbf{a}_a 
+\textbf{a}^{\dag}_p \textbf{a}^{\dag}_q
+\textbf{a}_s}{\textbf{a}_r}{}{\textbf{a}^{\dag}_b}
+\textbf{a}^{\dag}_i \textbf{a}_a 
+\textbf{a}^{\dag}_p \textbf{a}^{\dag}_q
+\textbf{a}_s \textbf{a}_r
+\textbf{a}^{\dag}_b \textbf{a}_j
+\} \nonumber \\ &
++ 
+\{
+\contraction[2ex]
+{}
+{\textbf{a}^{\dag}_i}
+{i \textbf{a}_a \textbf{a}^{\dag}_p \textbf{a}^{\dag}_q}
+{\textbf{a}_s}
+\contraction
+{\textbf{a}^{\dag}_i}
+{\textbf{a}_a}
+{\textbf{a}^{\dag}_p}
+{\textbf{a}^{\dag}_q}
+\contraction[3ex]
+{\textbf{a}^{\dag}_i \textbf{a}_a}
+{\textbf{a}^{\dag}_p}
+{\textbf{a}^{\dag}_q \textbf{a}_s \textbf{a}_r \textbf{a}^{\dag}_b}{\textbf{a}_j}
+\contraction[5ex]{\textbf{a}^{\dag}_i \textbf{a}_a 
+\textbf{a}^{\dag}_p \textbf{a}^{\dag}_q
+}{\textbf{a}_s}{}{\textbf{a}_r \textbf{a}^{\dag}_b}
+\textbf{a}^{\dag}_i \textbf{a}_a 
+\textbf{a}^{\dag}_p \textbf{a}^{\dag}_q
+\textbf{a}_s \textbf{a}_r
+\textbf{a}^{\dag}_b \textbf{a}_j
+\} ) \nonumber \\ &
+=  \frac{1}{4} \sum_{pqrs} \sum_{jb} \langle pq||rs \rangle t_j^b (
+\delta_{pj} \delta_{qa} \delta_{rb} \delta_{si} \nonumber \\ &
++ \delta_{pa} \delta_{qj} \delta_{ri} \delta_{sb}
+- \delta_{pa} \delta_{qj} \delta_{rb} \delta_{si}
+- \delta_{pj} \delta_{qa} \delta_{ri} \delta_{sb} ) \nonumber \\ &
+= \sum_{jb} \langle ja||bi \rangle t_j^b .
+\end{align}
+
+In total the contribution to the amplitudes from $\langle \Psi_i^a | \textbf{H}_N \textbf{T}_1 | \Psi_0 \rangle$ is
+
+\begin{equation}
+\langle \Psi_i^a | (\textbf{H}_N \textbf{T}_1)_c | \Psi_0 \rangle = - \sum_j f_{ji} t_j^a + \sum_b f_{ab} t_i^b
+\nonumber +  \sum_{jb} \langle ja||bi \rangle t_j^b . \label{t1amp_2}
+\end{equation}
+
+\subsubsection{$\frac{1}{2} \langle \Psi_i^a | (\textbf{H}_N \textbf{T}_1^2)_c | \Psi_0 \rangle$}
+Still contributions from $(\textbf{F}_N \textbf{T}_1^2)_c$ and $(\textbf{V}_N \textbf{T}_1^2)_c$ calculated individually. The number of steps in the calculation is now reduced since $\delta_{ij}$ is understood to be a result of a non zero contraction between indices i and j.
+
+\begin{align}
+\frac{1}{2} \langle \Psi_i^a | (\textbf{F}_N \textbf{T}_1^2)_c | \Psi_0 \rangle & = 
+\frac{1}{2} \sum_{pq} \sum_{jb} \sum_{kc} f_{pq} t_j^b t_k^c \langle \Psi_0 | \{\textbf{a}_i^{\dag} \textbf{a}_a \} \{\textbf{a}_p^{\dag} \textbf{a}_q \} \{\textbf{a}_b^{\dag} \textbf{a}_j \} \{\textbf{a}_c^{\dag} \textbf{a}_k \} | \Psi_0 \rangle \nonumber \\ &
+= \frac{1}{2} \sum_{pq} \sum_{jb} \sum_{kc} f_{pq} t_j^b t_k^c
+\left( -\delta_{pk} \delta_{qb} \delta_{ij} \delta_{ac}
+- \delta_{pj} \delta_{qc} \delta_{ik} \delta_{ab} \right) \nonumber \\ &
+= - \sum_{kc} f_{kc} t_i^c t_k^a .
+\end{align}
+
+\begin{align}
+\frac{1}{2} \langle \Psi_i^a | (\textbf{V}_N \textbf{T}_1^2)_c | \Psi_0 \rangle &
+= \frac{1}{8} \sum_{pqrs} \sum_{jb} \sum_{kc} 
+\langle pq || rs \rangle t_j^b t_k^c \langle \Psi_0 | 
+\{ \textbf{a}^{\dag}_i \textbf{a}_a \} \nonumber \\ &
+\{\textbf{a}^{\dag}_p \textbf{a}^{\dag}_q
+\textbf{a}_s \textbf{a}_r \} \{\textbf{a}^{\dag}_b \textbf{a}_j \} \{\textbf{a}^{\dag}_c \textbf{a}_k \}
+| \Psi_0 \rangle \nonumber \\ &
+= \frac{1}{8} \sum_{pqrs} \sum_{jb} \sum_{kc} 
+\langle pq || rs \rangle t_j^b t_k^c (
+\delta_{pa} \delta_{br} \delta_{sc} \delta_{qk} \delta_{ij} + \dots \nonumber \\ & 
+= \sum_{jbs} \langle ja || bc \rangle t_j^b t_i^c
+- \sum_{jbk} \langle jk || bi \rangle t_j^b t_k^a .
+\end{align}
+
+\subsubsection{Total}
+The remaining terms are calculated similarly. For our purposes we list the result. A more complete derivation is available in Ref.\cite{non_refer_numba1}.
+
+\begin{align}
+0 = & f_{ai} + \sum_c f_{ac} t_i^c - \sum_k f_{ki} t_k^a + \sum_{kc} \langle ka||ci \rangle t_k^c + \sum_{kc} f_{kc} t_{ik}^{ac} + \frac{1}{2} \sum_{kcd} \langle ka || cd \rangle t_{ki}^{cd} \label{T1equation} \\ &
+- \frac{1}{2} \sum_{klc} \langle kl||ci\rangle t_{kl}^{ca} - \sum_{kc} f_{kc} t_i^c t_k^a - \sum_{klc} \langle kl || ci \rangle t_k^c t_l^a + \sum_{kcd} \langle ka||cd \rangle t_k^c t_i^d \nonumber \\ & 
+- \sum_{klcd} \langle kl || cd \rangle t_k^c t_i^d t_l^a + \sum_{klcd} \langle kl||cd\rangle t_k^c t_{li}^{da} \nonumber \\ &
+ - \frac{1}{2} \sum_{klcd} \langle kl || cd \rangle t_{ki}^{cd} t_l^a 
+- \frac{1}{2} \sum_{klcd} \langle kl||cd \rangle t_{kl}^{ca} t_i^d . \nonumber
+\end{align}
+
+\subsection{$t_{ij}^{ab}$ amplitudes}
+$t_{ij}^{ab}$ amplitudes are generated in a similar fashion. These amplitudes are calculated by solving the equation
+
+\begin{equation}
+\langle \Psi_{ij}^{ab} | \bar{H} | \Psi_0 \rangle = 0 . \label{T2equationtosolve}
+\end{equation}
+This holds true because of the orthogonality. We can describe the state $\langle \Psi_{ij}^{ab}|$ in terms of creation and annihilation operators.
+
+\begin{equation}
+\langle \Psi_{ij}^{ab}| = \langle \Psi_0 | \{ \textbf{a}^{\dag}_i \textbf{a}^{\dag}_j \textbf{a}_a \textbf{a}_b \} .
+\end{equation}
+We can solve Eq. \eqref{T2equationtosolve}. Starting with the contribution from $\textbf{H}_N$. 
+
+\begin{align}
+\langle \Psi_{ij}^{ab} | \textbf{F}_N + \textbf{V}_N | \Psi_0 \rangle & = 
+\langle \Psi_{0} | \{\textbf{a}^{\dag}_i \textbf{a}^{\dag}_j \textbf{a}_a \textbf{a}_b\} \left( \textbf{F}_N + \textbf{V}_N \right) | \Psi_0 \rangle \nonumber \\ &
+= \sum_{pq} f_{pq} \langle \Psi_{0} | \{\textbf{a}^{\dag}_i \textbf{a}^{\dag}_j \textbf{a}_a \textbf{a}_b\} \left( \{ \textbf{a}^{\dag}_p \textbf{a}_q \} \right) | \Psi_0 \rangle \nonumber \\ & 
++ \frac{1}{4} \sum_{pqrs} \langle pq || rs \rangle \langle \Psi_{0} | \{\textbf{a}^{\dag}_i \textbf{a}^{\dag}_j \textbf{a}_a \textbf{a}_b\} \left( \{ \textbf{a}^{\dag}_p \textbf{a}^{\dag}_q 
+\textbf{a}_s \textbf{a}_r\} \right) | \Psi_0 \rangle \nonumber \\ &
+= \frac{1}{4} \sum_{pqrs} \langle pq || rs \rangle
+( \delta_{pa} \delta_{qb} \delta_{ri} \delta_{sj} - \nonumber \\ &
+\delta_{pb} \delta_{qa} \delta_{ri} \delta_{sj} - 
+\delta_{pa} \delta_{qb} \delta_{si} \delta_{rj} +
+\delta_{qa} \delta_{pb} \delta_{si} \delta_{rj} ) \nonumber \\ &
+= \sum_{pqrs} \delta_{pb} \delta_{qa} \delta_{ri} \delta_{sj} \nonumber \\ &
+= \langle ab || ij \rangle .
+\end{align}
+The contribution from $\textbf{F}_N$ will be zero. The contribution from $\textbf{H}_N \textbf{T}_1$ is more complicated.
+
+\begin{equation}
+\langle \Psi_{ij}^{ab} | (\textbf{F}_N + \textbf{V}_N)\textbf{T}_1 | \Psi_0 \rangle = \langle \Psi_{0} | \{\textbf{a}^{\dag}_i \textbf{a}^{\dag}_j \textbf{a}_a \textbf{a}_b\} \left( \textbf{F}_N + \textbf{V}_N \right) \textbf{T}_1 | \Psi_0 \rangle .
+\end{equation}
+These will be calculated individually. Here we will only calculate the contribution from $\textbf{V}_N \textbf{T}_1$.
+
+\begin{align}
+\langle \Psi_{0} | \{\textbf{a}^{\dag}_i \textbf{a}^{\dag}_j \textbf{a}_a \textbf{a}_b\}  \textbf{V}_N \textbf{T}_1 | \Psi_0 \rangle & = 
+\frac{1}{4}
+\sum_{pqrs}
+\sum_{kc}
+\langle pq|| rs \rangle t_k^c \langle \Phi_0 | \{
+\textbf{a}^{\dag}_i
+\textbf{a}^{\dag}_j
+\textbf{a}_a
+\textbf{a}_b \} \nonumber \\ & 
+\left(
+\{
+\textbf{a}^{\dag}_p
+\textbf{a}^{\dag}_q
+\textbf{a}_s
+\textbf{a}_r
+\}
+\{
+\textbf{a}^{\dag}_c
+\textbf{a}_k
+\}
+\right)_c | \Phi_0 \rangle
+\nonumber \\ & = 
+\frac{1}{4} \sum_{pqrs} \sum_{kc} \langle pq||rs\rangle t_k^c ( \delta_{pa} \delta_{qb} \delta_{rc} \delta_{sj} \delta_{ik}  \nonumber \\ & 
+- \delta_{pa} \delta_{qb} \delta_{rc} \delta_{si} \delta_{jk}
+- \delta_{pa} \delta_{qb} \delta_{rj} \delta_{sc} \delta_{ik}
++ \delta_{pa} \delta_{qb} \delta_{ri} \delta_{sc} \delta_{jk}
+\nonumber \\ & 
++ \delta_{pa} \delta_{qk} \delta_{rj} \delta_{si} \delta_{bc}
+- \delta_{pa} \delta_{qk} \delta_{ri} \delta_{sj} \delta_{bc}
++ \delta_{pb} \delta_{qa} \delta_{rj} \delta_{sc} \delta_{ik}
+ \nonumber \\ & 
+- \delta_{pb} \delta_{qa} \delta_{ri} \delta_{sc} \delta_{jk}
++ \delta_{pb} \delta_{qa} \delta_{rc} \delta_{si} \delta_{jk} 
++ \delta_{pb} \delta_{qk} \delta_{ri} \delta_{sj} \delta_{ac} \nonumber \\ & 
+- \delta_{pb} \delta_{qk} \delta_{rj} \delta_{si} \delta_{ac}
+- \delta_{pb} \delta_{qa} \delta_{rc} \delta_{sj} \delta_{ik}
++ \delta_{pk} \delta_{qa} \delta_{ri} \delta_{sj} \delta_{bc} \nonumber \\ & 
+- \delta_{pk} \delta_{qb} \delta_{ri} \delta_{sj} \delta_{ac}
+- \delta_{pk} \delta_{qa} \delta_{rj} \delta_{si} \delta_{bc}
++ \delta_{pk} \delta_{qb} \delta_{rj} \delta_{si} \delta_{ac}) \nonumber \\ &
+= \sum_c \left( \langle ab || cj \rangle t_i^c - \langle ab || ci \rangle t_j^c \right) \nonumber \\ & 
++ \sum_k \left( \langle ij || bk \rangle t_k^a - \langle ij||ak\rangle t_k^b \right) .
+\end{align}
+The rest of Eq. \eqref{T2equationtosolve} can be solved in a similar manner. This is a task testing stamina and determination. Here we will simply state the result, however there is a more complete derivation using "Feynman Diagrams" available in Appendix A. \\
+
+Before we state the final result we must define a permutation operator, $\textbf{P}$.
+
+\begin{equation}
+\textbf{P}(ab) f(a,b) = f(a,b) - f(b,a) .
+\end{equation}
+An example of this would be:
+
+\begin{equation}
+\textbf{P}(ab) \sum_{abij} t_i^a t_j^b f_{ai} = \sum_{abij} \left( t_i^a t_j^b f_{ai} - t_i^b t_j^a f_{bi} \right) .
+\end{equation} 
+Using this definition and solving the rest of Eq. \eqref{T2equationtosolve} the expression becomes the following:
+
+\begin{align}
+0 = & \langle ab || ij \rangle
++ \textbf{P}(ab) \sum_c f_{bc} t_{ij}^{ac}
+- \textbf{P}(ij) \sum_k f_{kj} t_{ik}^{ab}
++ \frac{1}{2} \sum_{kl} \langle kl||ij \rangle t_{kl}^{ab} \label{T2equation} \\ &
++ \frac{1}{2} \sum_{cd} \langle ab || cd \rangle t_{ij}^{cd}
++ \textbf{P}(ij) \textbf{P}(ab) \sum_{kc}
+\langle kb||cj \rangle t_{ik}^{ac} \nonumber \\ &
++ \textbf{P}(ij) \sum_c \langle ab || cj \rangle t_i^c
+- \textbf{P}(ab) \sum_k \langle kb || ij \rangle t_k^a
+\nonumber \\ &
++ \frac{1}{2} \textbf{P}(ij) \textbf{P}(ab) \sum_{klcd}
+\langle kl || cd \rangle t_{ik}^{ac} t_{lj}^{db} 
++ \frac{1}{4} \sum_{klcd} \langle kl || cd \rangle
+t_{ij}^{cd} t_{kl}^{ab} \nonumber \\ &
+-  \frac{1}{2} \textbf{P}(ab)\sum_{klcd} \langle kl || cd \rangle t_{ij}^{ac} t_{kl}^{bd}
+- \frac{1}{2} \textbf{P}(ij) \sum_{klcd} \langle kl || cd \rangle t_{ik}^{ab} t_{jl}^{cd} \nonumber \\ &
++ \frac{1}{2} \textbf{P}(ab) \sum_{kl}
+\langle kl || ij \rangle t_k^a t_l^b 
++ \frac{1}{2} \textbf{P}(ij) \sum_{cd} \langle ab || cd \rangle t_i^c t_j^d \nonumber \\ &
+- \textbf{P}(ij) \textbf{P}(ab) \sum_{kc} \langle kb || ic \rangle t_k^a t_j^c
++  \textbf{P}(ab) \sum_{kc} f_{kc} t_k^a t_{ij}^{bc} 
+\nonumber \\ &
++ \textbf{P}(ij) \sum_{kc} f_{kc} t_i^c t_{jk}^{ab}
+- \textbf{P}(ij) \sum_{klc} \langle kl || ci \rangle t_k^c t_{lj}^{ab}  \nonumber \\ &
++ \textbf{P} (ab) \sum_{kcd} \langle ka || cd \rangle t_k^c t_{ij}^{db} 
++ \textbf{P}(ij) \textbf{P}(ab) \sum_{kcd} \langle ak || dc \rangle t_i^d t_{jk}^{bc} \nonumber \\ &
++ \textbf{P} (ij) \textbf{P}(ab) \sum_{klc} \langle kl || ic \rangle t_l^a t_{jk}^{bc} 
++ \frac{1}{2} \textbf{P}(ij) \sum_{klc} \langle kl || cj \rangle t_i^c t_{kl}^{ab} \nonumber \\ &
+- \frac{1}{2} \textbf{P}(ab) \sum_{kcd} \langle kb || cd \rangle t_k^a t_{ij}^{cd} 
+- \frac{1}{2} \textbf{P}(ij) \textbf{P}(ab) \sum_{kcd} \langle kb||cd \rangle t_i^c t_k^a t_j^d \nonumber \\ &
++ \frac{1}{2} \textbf{P}(ij) \textbf{P}(ab) \sum_{klc} \langle kl || cj \rangle t_i^c t_k^a t_l^b
+- \textbf{P}(ij) \sum_{klcd} \langle kl || cd \rangle t_k^c t_i^d t_{lj}^{ab} \nonumber \\ &
+- \textbf{P}(ab) \sum_{klcd} \langle kl||cd \rangle t_k^c t_l^a t_{ij}^{db}
++ \frac{1}{4} \textbf{P}(ij) \sum_{klcd} \langle kl || cd \rangle t_i^c t_j^d t_{kl}^{ab} \nonumber \\ &
++ \frac{1}{4} \textbf{P}(ab) \sum_{klcd} \langle kl || cd \rangle t_k^a t_l^b t_{ij}^{cd}
++ \textbf{P}(ij) \textbf{P}(ab) \sum_{klcd} \langle kl || cd \rangle t_i^c t_l^b t_{kj}^{ad} \nonumber \\ &
++ \frac{1}{4} \textbf{P}(ij) \textbf{P} (ab) \sum_{klcd} \langle kl || cd \rangle t_i^c t_k^a t_j^d t_l^b . \nonumber
+\end{align}
+See Ref.\cite{non_refer_numba1} for the full derivation.
+
+\section{Introducing denominators}
+The expressions for $t_i^a$ and $t_{ij}^{ab}$ are complex and it is not easy to understand how to implement these equations effectively. The rest of this chapter and the next will be dedicated to simplifying Eqs. \eqref{T1equation} and \eqref{T2equation}.
+
+\subsection{$t_i^a$}
+Eq. \eqref{T1equation} should be rewritten considerably before it is programmable. Starting with a definition of $D_i^a$.
+
+\begin{equation}
+D_i^a \equiv f_{ii} - f_{aa} . \label{D_i_a_def} 
+\end{equation}
+Remembering Eq. \eqref{T1equation} we know it starts like this:
+
+\begin{align}
+0 = f_{ai} + \sum_c f_{ac} t_i^c - \sum_k f_{ki} t_k^a + \sum_{kc} \langle ka||ci \rangle t_k^c + \sum_{kc} f_{kc} t_{ik}^{ac} + \dots . \label{t1equationstart11}
+\end{align}
+The term $\sum_c f_{ac} t_i^c$ can be rewritten.
+
+\begin{equation}
+\sum_c f_{ac} t_i^c = f_{aa} t_i^a + \sum_c 
+(1 - \delta_{ca} ) f_{ac} t_i^c .
+\end{equation}
+Doing the same with the term $\sum_k f_{ki} t_k^a$ and inserting in Eq. \eqref{t1equationstart11} we get:
+
+\begin{align}
+0 = f_{ai} + f_{aa} t_i^a + \sum_c 
+(1 - \delta_{ca} ) f_{ac} t_i^c - f_{ii} t_i^a - \sum_k (1 - \delta_{ki}) f_{ki} t_k^a + \dots \nonumber
+\end{align}
+The two terms $f_{aa} t_i^a$ and $f_{ii} t_i^a$ are combined using the definition Eq. \eqref{D_i_a_def}. 
+
+\begin{equation}
+f_{aa} t_i^a - f_{ii} t_i^a = -D_i^a t_i^a .
+\end{equation}
+This is inserted into Eq. \eqref{T1equation}, and moved to the other side of the equation.
+
+\begin{equation}
+D_i^a t_i^a = f_{ai} + \sum_c 
+(1 - \delta_{ca} ) f_{ac} t_i^c - \sum_k (1 - \delta_{ki}) f_{ki} t_k^a + \dots
+\end{equation}
+If we perform the same procedure for $t_{ij}^{ab}$ we can solve this iteratively until self consistency is reached.
+
+\subsection{$t_{ij}^{ab}$}
+We also implement a denominator $D_{ij}^{ab}$ in Eq. \eqref{T2equation}. 
+
+\begin{equation}
+D_{ij}^{ab} \equiv f_{ii} + f_{jj} - f_{aa} - f_{bb}
+\end{equation}
+Here we want to create the term $D_{ij}^{ab} t_{ij}^{ab}$. This is done with the same procedure with the two terms $\textbf{P}(ab) \sum_c f_{bc} t_{ij}^{ac}
+- \textbf{P}(ij) \sum_k f_{kj} t_{ik}^{ab}$ from Eq. \eqref{T2equation}. These two terms can be expressed in a different manner.
+
+\begin{align}
+\textbf{P}(ab) \sum_c f_{bc} t_{ij}^{ac}
+- \textbf{P}(ij) \sum_k f_{kj} t_{ik}^{ab} = & 
+f_{aa} t_{ij}^{ab} + f_{bb} t_{ij}^{ab} + 
+\textbf{P}(ab) \sum_c (1-\delta_{bc}) f_{bc} t_{ij}^{ac} \nonumber \\ &
+- \textbf{P}(ij) \sum_k (1-\delta_{kj}) f_{kj} t_{ik}^{ab}
+- f_{ii} t_{ij}^{ab}
+- f_{jj} t_{ij}^{ab} . \nonumber
+\end{align}
+Then the four terms where no sums are present are combined into $D_{ij}^{ab} t_{ij}^{ab}$ and moved to the other side of the equation. This leaves another problem which we can solve iteratively.
+
+\begin{equation}
+D_{ij}^{ab} t_{ij}^{ab} = \langle ab||ij \rangle + + 
+\textbf{P}(ab) \sum_c (1-\delta_{bc}) f_{bc} t_{ij}^{ac} - \dots \nonumber
+\end{equation}
+Here those three dots represent the rest of Eq. \eqref{T2equation}.
+
+\subsection{Initial guess}
+The initial guess from where to start the iterative process can be anything. However it is common to start an initial guess where all the amplitudes on the right side are 0. This leaves
+
+\begin{equation}
+t_i^a = \frac{f_{ai}}{D_i^a} .
+\end{equation}
+
+\begin{equation}
+t_{ij}^{ab} = \frac{\langle ab || ij \rangle}{D_{ij}^{ab}} .
+\end{equation}
+However it is also common to simply guess $t_i^a = 0$. We will make this initial guess to make benchmarking the number of iterations easier. \\
+
+The iterative procedure is one where $t_i^a$ and $t_{ij}^{ab}$ are updated simultaneously, and in theory we have converged once these amplitudes stop changing. However in practice we define a convergence criteria. This is then compared to the change in energy each iteration with the newly updated amplitudes. We then define convergence to when the energy stop changing, which should for all intents and purposes be an equivalent criteria. 
+
+\section{Variational Principle}
+The energy expression in CC contains the operator $e^{-\textbf{T}} \textbf{H} e^{\textbf{T}}$, which is not Hermitian. This means the variational principle no longer applies. It is possible to use the variational principle with CC, but this is a huge complication. This also means it is possible with coupled cluster to get energies lower than the true ground state energy.
+

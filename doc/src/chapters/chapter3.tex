@@ -1,0 +1,730 @@
+
+\chapter{Basis sets}\label{chap:basisets}
+
+%\section{Introduction}
+\abstract{Numerical integration and differentiation
+are some of the most frequently needed methods in computational
+physics. Quite often we are confronted with the need of evaluating
+either the derivative $f'$ or an integral  $\int f(x)dx$.  
+The aim of this chapter is to introduce some of these methods
+with a critical eye on numerical accuracy, following the discussion
+in the previous chapter. 
+ The next section deals essentially with topics from numerical differentiation.
+There we present also the most commonly used formulae for computing
+first and second derivatives, formulae which in turn find their most important
+applications in the numerical solution of ordinary and partial 
+differential equations. We discuss also selected methods for numerical 
+interpolation. 
+This  chapter serves also the scope of introducing
+some more advanced C++ programming concepts, such as call
+by reference and value, reading and writing to a file and the use
+of dynamic memory allocation.  We will also discuss several object-oriented features of C++,
+ending the chapter with an analogous discussion of Fortran features.}
+
+
+In the previous chapter the general Hartree-Fock equations, which is a set of
+integro-differential equations, were converted to a set of algebraic equations (the Roothaan
+equations in the restricted case and the Pople-Nesbet equations in the unrestricted case) by
+expanding the unknown orbitals in a known set of basis functions. The Fock operator was then
+reduced to a matrix, the elements of which are integrals involving the chosen basis functions.
+
+We start this chapter by discussing two popular types of basis functions, namely the 
+Slater-type orbtials (STOs) and the Gaussian-type orbitals (GTOs). The latter is more suited for
+molecular calculations and is the one we will use in this thesis. Thereafter we derive the
+integration scheme for the Gaussian type orbitals.
+
+
+
+\section{Basis functions}
+For a molecular system, the eigenfunctions of the Hartree-Fock equations are called
+\emph{molecular orbitals} (MOs). As discussed earlier, it is important to distinguish these
+from the perhaps more familiar \emph{atomic orbitals}, and it is erroneous to
+think that the electrons of molecular systems are occupying atomic orbitals.
+Consider for example the $H_2$-molecule.
+In the ground state the electrons are not occupying the 1$s$-orbitals of atomic hydrogen. The
+molecular system is entirely different from the atomic one, with an entirely different Hamiltonian,
+and the eigenstates of the Hartree-Fock equations will therefore also be different.
+
+In order to solve the Hartree-Fock equations, we need to expand the molecular orbitals in a known
+set of basis functions
+\begin{equation}
+ \phi_k(\vec r) = \sum_{\mu=1}^M\chi_{\mu k}(\vec r).
+\end{equation}
+The importance of choosing suitable basis functions can hardly be overemphasised; it completely determines
+the accuracy of the results as well as the computational cost of the calculations. In choosing basis functions,
+the following criteria should be met:
+\begin{enumerate}
+ \item The functions must be physically reasonable, i.e., they should have large probability where
+      the electrons are likely to be and small probability elsewhere.
+ \item It should be possible to integrate the functions efficiently.
+ \item The solution of the Hartree-Fock equations must converge towards the Hartree-Fock limit (see chapter \ref{chapter:electron_correlation})
+       as the number of basis functions increases.
+\end{enumerate}
+The first point suggests that we choose atomic orbitals as basis functions,  which is often
+referred to as ``linear combination of atomic orbitals'' (LCAO). In this thesis we will let the
+atomic orbitals be centered at the nuclei. However, this is not strictly required since the
+atomic orbitals are merely being used as basis functions, and they are not to be thought of
+as orbitals occupied by electrons. In the following two subsections, we
+discuss two common types of atomic orbitals, namely the Slater type orbitals (STOs) and
+Gaussian type orbitals (GTOs), respectively. Only the GTOs will be applied to the 
+calculations in this thesis.
+
+
+\subsection{Slater-type orbitals (STOs)}
+The Slater type orbitals are defined as \cite{Cramer}
+\begin{equation}
+ \chi^{STO}(r,\theta,\phi,n,l,m) = \frac{(2a)^{n+1/2}}{[(2n)!]^{1/2}}r^{n-1}\exp(-a r) Y^m_l(\theta,\phi),
+\end{equation}
+where $n$ is the principal quantum number, $l$ and $m$ are the angular momentum quantum numbers,
+$Y^m_l(\theta,\phi)$ are the spherical harmonics familiar from the solution of the Schrödinger
+equation for the hydrogen atom, and $a$ is an exponent which determines the radial decay of the
+function. The main attractive features of the STOs are that they have the correct exponential decay with
+increasing $r$ and that the angular components are hydrogenic. For this reason, they are often
+used in atomic Hartree-Fock calculations. When doing molecular calculations, however, they have the
+disadvantage that the two-particle integrals $\bra{\mu\sigma}g\ket{\nu\lambda}$ occuring in the
+Fock matrix $F_{\mu\nu}$ have no known analytical expression. This is because integrals of products
+of exponentials centered on different nuclei are difficult to handle. They can of course be calculated
+numerically, but for large molecules this is very time consuming.
+
+\subsection{Gaussian-type orbitals (GTOs)}
+A clever trick which makes multiple center integrals easier to handle is to replace the exponential
+term $\exp(-a r)$ with $\exp(-a r^2)$, i.e., to use Gaussian functions. This greatly simplifies the
+integrals because the product of two Gaussians centered on nuclei with positions
+$\vec A$ and $\vec B$ is equal to \emph{one} Gaussian centered on some point $\vec P$ on
+the line between them:
+\begin{equation}
+\label{eq:gaussian_product}
+ \exp(-a|\vec r - \vec A|^2)\cdot \exp(-b|\vec r - \vec B|^2) = K_{AB}\,\exp(-p|\vec r - \vec P|^2),
+\end{equation}
+where
+\begin{eqnarray}
+ K_{AB} & = & \exp\Big(-\frac{ab}{a + b}|\vec A - \vec B|^2\Big), \\
+ \vec P & = & \frac{a \vec A + b \vec B}{a + b}, \\
+ p & = & a + b.
+\end{eqnarray}
+This is the so-called \emph{Gaussian product theorem}. It is illustrated in the one-dimensional case in figure \ref{fig:Gaussians}.
+\begin{figure}
+ \begin{center}
+  \includegraphics[scale=0.5]{basis_functions_and_integral_evaluation/figures/Gaussians.pdf}
+  \caption{Illustration of the Gaussian product theorem which says that the product of two Gaussians with centers at points A and B is another Gaussian
+           with center somewhere between A and B.}
+  \label{fig:Gaussians}
+ \end{center}
+\end{figure}
+
+
+The general functional form of a normalised Gaussian type orbital 
+centered at $\vec A$ is given by \cite{Cramer}
+\begin{equation}
+\label{eq:gaussian_primitive}
+ G_{ijk}(a, \vec r_A) = \Big(\frac{2a}{\pi}\Big)^{3/4}\Big[\frac{(8a)^{i+j+k}\,i!\,j!\,k!}{(2i)!\,(2j)!\,(2k)!}\Big]x_A^i\,y_A^j\,z_A^k\,\exp(-a r_A^2),
+\end{equation}
+where $\vec r_A = \vec r - \vec A$ and the integers $i$, $j$, $k$ determine the angular momentum quantum number $l=i+j+k$. 
+
+\subsection{Contracted GTOs}
+\label{subsec:contracted_gtos}
+The greatest drawback with Gaussians is that they do not have the proper exponential radial decay. This can be remedied by forming linear combinations of GTOs
+to resemble the STOs
+\begin{equation}
+ \chi^{CGTO}(\vec r_A,i,j,k) = \sum_{p=1}^L d_p G_{ijk}(a_p, \vec r_A).
+\end{equation}
+These are called STO-LG basis functions, where L refers to the number of Gaussians used in the linear combination. Hehre, Stewart and Pople \cite{pople}
+were the first to systematically calculate optimal coefficients $d_p$ and exponentials $a_p$, and today the STO-LG basis sets are available
+for most atoms.
+The individual Gaussians are called \emph{primitive} basis functions and the linear combinations are called \emph{contracted} basis functions, hence the label
+CGTO (Contracted Gaussian Type Orbital). In this thesis we will only consider CGTOs, and whenever the symbol $\chi$ appears without any label,
+we will always mean CGTO. 
+
+A very common choice for the STO-LG basis sets is $L=3$. Figure \ref{fig:STOvsSTO3G} shows how the 1$s$ STO for hydrogen is approximated by 3 GTOs.
+The exponents $a_p$ and coefficients $d_p$ have been set so that the contracted basis function lies as close to the STO as possible, see
+table \ref{tab:STO3G}. It is important to note that the parameters $(a_p,d_p)$ are static and that the linear combination of Gaussians constitute \emph{one single}
+basis function. Throughout this text the phrase ``basis function'' will always refer to a contracted basis function.
+
+
+
+\begin{figure}
+ \begin{center}
+  \includegraphics[scale=0.7]{basis_functions_and_integral_evaluation/figures/STO3G.pdf}
+  \caption{The whole line shows the 1s STO basis function, while the broken line shows a linear combination of three Gaussians.}
+  \label{fig:STOvsSTO3G}
+ \end{center}
+\end{figure}
+
+% Note that the GTOs and STOs do not have any radial nodes as the hydrogenic functions do. This means that no single GTO or STO can mimic the 2$s$ hydrogenic orbital for example. With contractions, however,
+% this problem is eliminated; nodes can be introduced by using a combination of positive and negative coefficients $d_p$.
+
+The STO-LG basis sets belong to the family of \emph{minimal basis sets}.
+It means that there is one and only one basis function per atomic orbital.
+The STO-LG basis sets for the hydrogen and helium atoms, for example, contain only one basis
+function for the 1$s$ atomic orbital. This basis function is, as explained above, composed of
+a linear combination of L primitives. For the atoms lithium through neon the STO-LG basis
+sets contain 5 basis functions; one for each of the atomic orbitals
+$1s$, $2s$, $2p_x$, $2p_y$ and $2p_z$.
+
+\begin{table}
+ \begin{center}
+ \caption{Coefficients and exponents used in the STO-3G basis shown in figure \ref{fig:STOvsSTO3G}.}
+ \label{tab:STO3G}
+  \begin{tabular}{|c|c|c|c|}\hline
+   $p$        &  1  &  2  &   3 \\ \hline
+   $d_p$      &  0.1543   & 0.5353    & 0.4446  \\ \hline
+   $a_p$ &  3.4252   & 0.6239    & 0.1688  \\ \hline
+  \end{tabular}
+ \end{center}
+\end{table}
+
+The reader might be asking herself why the coefficients $d_p$ in the linear combination of the STO-LGs are static. Shouldn't the accuracy of our results
+actually improve if we let the coefficients vary? The answer to this is yes. However, the linear system to be solved (the Hartree-Fock equations) will then
+be larger. Thus there is a trade off between accuracy and computational efficiency which must be considered.
+
+However, basis sets where the STO-LG sets have been ``decontracted'' as described above have actually been used. They belong to the family of $\zeta$-basis sets.
+The double-$\zeta$ and triple-$\zeta$ basis sets have two and three basis functions, respectively, for each atomic orbital. As an example, we could
+create a double-$\zeta$ basis set from the STO-3G basis set by contracting the two first primitives and leave the third as a normalised primitive. Similarly, we could
+counstruct a triple-$\zeta$ basis set by treating each primitive as a basis function.
+
+Let us for a moment assume that we use a triple-$\zeta$ basis set constructed from the STO-3G to do Hartree-Fock calculations on atomic oxygen.
+What will the resulting orbitals look like? The lowest orbital will be very close to the definition of the 1$s$ orbital of the STO-3G set.
+This is to be expected since the STO-3G basis functions are constructed to resemble the STO atomic orbitals.
+
+What if we now apply the same triple-$\zeta$ basis to calculations on the CO molecule, say? In this case we would probably also find an orbital which resembles the 1$s$
+orbital of the STO-3G basis for oxygen. This is because it is mostly the valence electrons which contribute in the bonding between atoms, and the core electrons are more or less unaffected.
+Thus decontracting basis functions corresponding to the core atomic orbitals will generally not pay off, but will merely increase the computational load. Therefore, basis
+sets have been constructed where only the functions corresponding to the valence atomic orbitals are decontracted. These are the so-called \emph{split-valence} basis sets. 
+An example of a split-valence basis set is the 3-21G. The number before the hyphen (in this case 3) is the number of primitives per core atomic orbital. The fact that there are
+two numbers after the hyphen signifies that there are two basis functions for each valence atomic orbital. The numbers themselves (in this case 2 and 1) indicate how many primitives
+the first and second of these are composed of. As an example, the 3-21G basis set for the oxygen atom has one single
+basis function for the 1$s$ orbital (since this is the core orbital), and this basis function consists of three primitives. Furthermore, it has two basis functions for the 2$s$,
+2$p_x$, 2$p_y$ and 2$p_z$ atomic orbitals (since these are the valence orbitals). The first consists of two primitives, and the second consists of only one
+primitive. In sum the oxygen atom thus has 9 basis functions which are built up from a total of 15 primitives.
+Other examples of split-valence basis sets are 4-31G, 6-31G and 6-311G \cite{Cramer}.
+
+In many molecular calculations, the split-valence basis sets mentioned thus far do not provide enough flexibility to describe the chemistry appropriately.
+This is often fixed by adding functions
+corresponding to atomic orbitals with angular momentum $l_{max}+1$, where $l_{max}$ is the highest angular momentum of the atom. 
+Such functions are called \emph{polarisation functions}. For example, the polarisation functions for the Oxygen atom are the $d$-functions. Asterisks (*) are added to the name of the basis set to indicate that polarisation
+functions are included. One asterisk (as in 6-31G*) indicates that $d$-functions are added to polarise the $p$-functions of first row atoms (Li-Ne). Two asterisks (as in 6-31G**)
+mean that $p$-functions are added to polarise the $s$-functions of hydrogen and helium as well.
+
+% Note that the 3-21G basis set for Oxygen contains basis functions for each atomic orbital up to the $p$-orbital. Similarly, all the split-valence basis sets mentioned above
+% contain basis functions for each atomic orbital up to the the highest present in the atom which is considered. However, in many molecular calculations this does not provide enough flexibility to
+% describe the chemistry correctly. One way to increase the flexibility is to include basis functions for the orbital \emph{above} the highest present in the atom. These functions
+% are called \emph{polarization functions}. The polarization functions for the Oxygen atom are the $d$-orbitals. An asterix (*) is added to the name of the basis set to indicate that polarization
+% functions are included. One asterisk (as in 3-21G*, for example) indicate that $d$-functions are added to polarize the $p$-functions. Two asterisks (as in 3-21G**, for example)
+% are added to show that also the $s$-functions of Hydrogen and helium are polarized by $p$-functions.
+
+It should be noted that the list of basis sets mentioned here is in no way exhaustive. There is a flora of basis sets out there, see for example
+Cramer \cite{Cramer} or Helgaker \emph{et al} \cite{Helgaker}.
+
+
+
+
+\section{Integral evaluation}
+As discussed in the previous section, using Gaussian basis functions significantly improves the speed of the integrations which must be done when setting up the Fock matrix.
+This section discusses the details of how the integration is performed.
+
+We start by summarising the most important properties of the Cartesian Gaussians. Thereafter, we
+change basis to the so-called Hermite Gaussians, as proposed by \v{Z}ivkovi\'{c} and Maksi\'{c} \cite{zivkovic_maksic}.
+Then, following the work of McMurchie and Davidson \cite{mcmurchie_davidson}, we show how the one- and two-particle integrals can be expressed compactly in
+terms of some auxiliary functions. The auxiliary functions are computed via a set of recurrence relations.
+
+A thorough review of the techniques presented can be found in Helgaker \emph{et al} \cite{Helgaker}.
+
+\subsection{Cartesian Gaussians}
+The Cartesian Gaussian functions centered at $\vec A$ are given by
+\begin{equation}
+ G_{ijk}(a, \vec r_A) = x^i_A\,y^j_A\,z^k_A\,\exp(-a r^2_A),
+\end{equation}
+where $\vec r_A = \vec r - \vec A$. These will be our primitive basis functions. They factorise in the Cartesian components
+\begin{equation}
+ G_{ijk}(a, \vec r_A) = G_i(a, x_A)\,G_j(a, y_A)\,G_k(a, z_A),
+\end{equation}
+where
+\begin{equation}
+ G_i(a, x_A) = x^i_A\,\exp(-a x^2_A),
+\end{equation}
+and the other factors are defined similarly. Each of the components obey the simple recurrence relation
+\begin{equation}
+ x_A\,G_i = G_{i+1}.
+\end{equation}
+
+
+\subsection{Gaussian overlap distribution}
+We introduce the following shorthand notation
+\begin{align}
+  G_a(\vec r) & = G_{ikm}(a, \vec r_A), \label{eq:Ga}\\
+  G_b(\vec r) & = G_{jln}(b, \vec r_B), \label{eq:Gb}
+\end{align}
+and define the overlap distribution
+\begin{equation}
+ \Omega_{ab}(\vec r) = G_a(\vec r)\,G_b(\vec r).
+\end{equation}
+Using the Gaussian product theorem (\ref{eq:gaussian_product}) this can be written as
+\begin{equation}
+ \Omega_{ab}(\vec r) = K_{AB}\,x^i_A\,x^j_B\,y^k_A\,y^l_B\,z^m_A\,z^n_B\,\exp(-p\,r^2_P),
+\end{equation}
+where
+\begin{equation}
+\label{eq:gaussian_product_defs}
+ \begin{split}
+  K_{AB} & = \exp\Big(-\frac{ab}{a + b}R^2_{AB}\Big) \\
+  \vec R_{AB} & =  \vec A - \vec B \\
+  p & = a + b\\
+  \vec r_P & = \vec r - \vec P \\
+  \vec P & = \frac{a\vec A + b\vec B}{a + b}.
+ \end{split}
+\end{equation}
+Because the Gaussians $G_a$ and $G_b$ factorise in their Cartesian components, so does the overlap distribution
+\begin{equation}
+ \Omega_{ab}(\vec r) = \Omega_{ij}(x)\,\Omega_{kl}(y)\,\Omega_{mn}(z),
+\end{equation}
+where
+\begin{equation}
+ \Omega_{ij} = K^x_{AB}\,x^i_A\,x^j_B\,\exp(-px^2_P)
+\end{equation}
+and
+\begin{equation}
+\begin{split}
+ K^x_{AB} = & \exp\Big(-\frac{ab}{a + b}X^2_{AB}\Big) \\
+   X_{AB} = & A_x - B_x.
+\end{split}
+\end{equation}
+The distributions $\Omega_{kl}(y)$ and $\Omega_{mn}(z)$ are defined similarly.
+
+
+
+
+\subsection{Hermite Gaussians}
+Later we will expand the Cartesian Gaussians in terms of the so-called Hermite Gaussians.
+This will simplify the integrations significantly. The Hermite Gaussians centered at $\vec P$ are defined by
+\begin{equation}
+ \Lambda_{tuv}(p, \vec r_p) = \Big(\frac{\partial}{\partial P_x}\Big)^t \Big(\frac{\partial}{\partial P_y}\Big)^u \Big(\frac{\partial}{\partial P_z}\Big)^v \exp(-p\, r^2_P),
+\end{equation}
+where $\vec r_p = \vec r - \vec P$. They factorise in the same way as the Cartesian Gaussians do:
+\begin{equation}
+ \Lambda_{tuv}(p, \vec r_P) = \Lambda_t(p,x_P)\,\Lambda_u(p,y_P)\,\Lambda_v(p,z_P),
+\end{equation}
+where
+\begin{equation}
+\label{eq:HermiteGaussian_x}
+ \Lambda_t(p,x_P) = \Big(\frac{\partial}{\partial P_x}\Big)^t \exp(-p\,x^2_P),
+\end{equation}
+and the other factors are defined similarly. However, their recurrence relation is quite different from that of the Cartesian Gaussians:
+\begin{equation}
+\begin{split}
+ \Lambda_{t+1}(p,x_P) & = \Big(\frac{\partial}{\partial P_x}\Big)^t \frac{\partial}{\partial P_x}\exp(-px^2_P) \\
+                      & = \Big(\frac{\partial}{\partial P_x}\Big)^t 2px_P \exp(-px^2_P)  \\
+                      & = 2p[-t\Big(\frac{\partial}{\partial P_x}\Big)^{t-1} + x_P \Big(\frac{\partial}{\partial P_x}\Big)^t] \exp(-px^2_P) \\
+                      & = 2p[-t\Lambda_{t-1} + x_P \Lambda_t],
+\end{split}
+\end{equation}
+where we have used that
+\begin{equation}
+\label{eq:derivation_rule}
+ \Big(\frac{\partial}{\partial x}\Big)^t x f(x) = t\Big(\frac{\partial}{\partial x}\Big)^{t-1}f(x) + x\Big(\frac{\partial}{\partial x}\Big)^t f(x).
+\end{equation}
+Thus the recurrence relation reads
+\begin{equation}
+\label{eq:hermite_gaussian_recurrence}
+ x_P \Lambda_t = \frac{1}{2p}\Lambda_{t+1} + t\Lambda_{t-1}.
+\end{equation}
+
+
+
+
+\subsection{Overlap integral $S_{ab}$}
+Our goal is to compute the overlap integral
+\begin{equation}
+S_{ab}  = \langle G_a|G_b\rangle = \int d\vec r \,\Omega_{ab}(\vec r)
+\end{equation}
+between two Gaussians centered at the points $\vec A$ and $\vec B$.
+Note that since the overlap distribution $\Omega_{ab}$ factorise in the Cartesian components, the integrals over $x$, $y$ and $z$ can be calculated independently of each other:
+\begin{equation}
+\begin{split}
+ S_{ab} = & \langle G_i|G_j\rangle \langle G_k|G_l\rangle \langle G_m|G_n\rangle \\
+        = & S_{ij}\,S_{kl}\,S_{mn}.
+\end{split}
+\end{equation}
+The $x$ component of the overlap integral, for example, is given by
+\begin{equation}
+\label{eq:intG_ij}
+\begin{split}
+ S_{ij} = & \int dx \,\Omega_{ij}(x) \\
+        = & K_{AB}^x\int dx \,x_A^ix_B^j\exp(-px_P^2).
+\end{split}
+\end{equation}
+In equation (\ref{eq:intG_ij}) the two-center Gaussians have been reduced to a one-center Gaussian.
+However, the integral is still not straightforward to calculate because of the powers $x_A^i$ and $x_B^j$. A smart way to deal with this is to express the Cartesian Gaussian
+in terms of the Hermite Gaussians. Note that (\ref{eq:HermiteGaussian_x}) is a polynomial of order $t$ in $x$ multiplied by the exponential function. In equation (\ref{eq:intG_ij}) the polynomial
+is of order $i+j$. This means that we can express the overlap distribution $\Omega_{ij}(x)$ in equation (\ref{eq:intG_ij}) in terms of the Hermite Gaussians in (\ref{eq:HermiteGaussian_x}) in the following way:
+\begin{equation}
+\label{eq:LinCombOfHermGauss}
+ \Omega_{ij}(x) = \sum_{t=0}^{i+j} E^{ij}_t \Lambda_t(p, x_P),
+\end{equation}
+where $E^{ij}_t$ are constants.
+Note that the sum is over $t$ only. The indices $i$ and $j$ are static and are determined from the powers of $x$ in $G_i$ and $G_j$.
+We use them as labels on the coefficients $E^{ij}_t$ because different sets of indices will lead to different sets of coefficients.
+
+To get the overlap integral in the $x$-direction we integrate (\ref{eq:LinCombOfHermGauss}) over $\mathbb{R}$, which now turns out to be extremely easy;
+the only term that survives the integration is the term for $t=0$:
+\begin{eqnarray}
+ \int dx\,\Lambda_t(p,x_P) & = & \int dx\,\Big(\frac{\partial}{\partial P_x}\Big)^t\exp(-p\,x^2_P), \\
+                           & = & \Big(\frac{\partial}{\partial P_x}\Big)^t \int dx\,\exp(-p\,x^2_P), \\
+                           & = & \sqrt{\frac{\pi}{p}}\,\delta_{t0}.
+\end{eqnarray}
+We have used Leibniz' rule, which says that the differentiation of an integrand with respect to a variable which is not an integration variable can
+be moved outside the integral. Thus the integral in (\ref{eq:intG_ij}) is simply
+\begin{equation}
+ S_{ij} = E^{ij}_0\,\sqrt{\frac{\pi}{p}}.
+\end{equation}
+The exact same procedure can be used for the integrals with respect to $y$ and $z$, which means that the total overlap integral is
+\begin{equation}
+\label{eq:S_ab}
+ S_{ab} = E^{ij}_0\,E^{kl}_0\,E^{mn}_0\,\Big(\frac{\pi}{p}\Big)^{3/2}.
+\end{equation}
+So far nothing has been said about how we actually determine the coefficients $E^{ij}_t$. First observe that when $i=j=0$ in equation (\ref{eq:LinCombOfHermGauss})
+we obtain
+\begin{equation}
+ E^{0,0}_0 = K_{AB}^x.
+\end{equation}
+The other coefficients are found via the following recurrence relations
+\begin{equation}
+\label{eq:E_recurrence}
+\begin{split}
+ E^{i+1,j}_t & = \frac{1}{2p}E^{ij}_{t-1} + X_{PA}E^{ij}_t + (t+1)E^{ij}_{t+1} \\
+ E^{i,j+1}_t & = \frac{1}{2p}E^{ij}_{t-1} + X_{PB}E^{ij}_t + (t+1)E^{ij}_{t+1}.
+\end{split}
+\end{equation}
+Analogous expressions hold for the coefficients $E^{kl}_u$ and $E^{mn}_v$. The first equation in (\ref{eq:E_recurrence}) can be derived by comparing two equivalent ways of expanding the product $G_{i+1}G_j$
+in Hermite Gaussians. The first way is
+\begin{equation}
+ G_{i+1}\,G_j= \sum_{t=0}^{i+j+1}E^{i+1,j}_t \Lambda_t,
+\end{equation}
+and the second way is
+\begin{equation}
+\label{eq:derivation_E_coeffs}
+\begin{split}
+ G_{i+1}\,G_j & = x_A G_i\,G_j \\
+              & = [(x - P_x) + (P_x - A_x)]\sum_{t=0}^{i+j} E^{ij}_t \Lambda_t\\
+              & = \sum_{t=0}^{i+j}[x_P + X_{PA}] E^{ij}_t \Lambda_t \\
+              & = \sum_{t=0}^{i+j}[\frac{1}{2p}\Lambda_{t+1} + t\Lambda_{t-1} + X_{PA}\Lambda_t]E^{ij}_t \\
+              & = \sum_{t=0}^{i+j+1}[\frac{1}{2p}E^{ij}_{t-1} + X_{PA}E^{ij}_t + (t+1)E^{ij}_{t+1}] \Lambda_t,
+\end{split}
+\end{equation}
+where we have used the recurrence relation (\ref{eq:hermite_gaussian_recurrence}) on the fourth line and changed the summation indices on the fifth line. Comparing the two expressions gives the
+desired result.
+
+Note that the change in summation indices in equation (\ref{eq:derivation_E_coeffs}) implies that we must define
+\begin{equation}
+ E^{ij}_t = 0, \qquad \text{if }t<0\text{ or }t > i + j.
+\end{equation}
+
+
+
+\subsection{Kinetic integral $T_{ij}$}
+Next we turn to the evaluation of the kinetic integral:
+\begin{equation}
+\begin{split}
+T_{ab} & = -\frac{1}{2}\bra{G_a}\nabla^2\ket{G_b} \\
+       & = -\frac{1}{2}\bra{G_{ikm}(a, \vec r_A)}\nabla^2\ket{G_{jln}(b, \vec r_B)} \\
+       & = -\frac{1}{2}(T_{ij}\,S_{kl}\,S_{mn} + S_{ij}\,T_{kl}\,S_{mn} + S_{ij}\,S_{kl}\,T_{mn}),
+\end{split}
+\end{equation}
+where
+\begin{equation}
+ T_{ij} = \int dx \,G_i(a,x_A)\frac{\partial^2}{\partial x^2}G_j(b,x_B),
+\end{equation}
+and the other factors are defined in the same way. Performing the differentiation yields
+\begin{equation}
+ T_{ij} = 4b^2\,S_{i,j+2} - 2b(2j + 1)S_{i,j} + j(j-1)S_{i,j-2}.
+\end{equation}
+Thus we see that the kinetic integrals are calculated easily as products of the overlap integrals.
+
+
+\subsection{Coulomb integral $V_{ab}$}
+\label{sec:V_ab}
+We now turn to the Coulomb integral due to the interaction between the electrons and the nuclei
+\begin{equation}
+ V_{ab} = \bra{G_a}\frac{1}{r_C}\ket{G_b},
+\end{equation}
+where $r_C = |\vec r - \vec C|$. As before, the overlap distribution is expanded in the Hermite Gaussians:
+\begin{equation}
+\begin{split}
+ V_{ab} & = \int d\vec r \,\frac{\Omega_{ab}(\vec r)}{r_C} \\
+        & = \sum_{tuv}E^{ij}_t E^{kl}_u E^{mn}_v\int d\vec r \, \frac{\Lambda_{tuv}(p,\vec r_P)}{r_C} \\
+        & = \sum_{tuv}E^{ab}_{tuv}\int d\vec r \, \frac{\Lambda_{tuv}(p,\vec r_P)}{r_C}. \\
+\end{split}
+\end{equation}
+Here we have used the shorthand notation
+\begin{equation}
+ E^{ab}_{tuv} = E^{ij}_t E^{kl}_u E^{mn}_v.
+\end{equation}
+In this integral other terms besides $\Lambda_{000}$ will survive due to the factor $1/r_C$. Let us nonetheless start by evaluating this term
+\begin{equation}
+ V_p = \int d\vec r \, \frac{\Lambda_{000}(p,\vec r_P)}{r_C} = \int d\vec r\, \frac{\exp(-p\,r_P^2)}{r_C}.
+\end{equation}
+We will show that this three-dimensional integral can actually be converted to a one-dimensional one. The trick is to observe that the factor $1/r_C$ can be replaced by the integral
+\begin{equation}
+ \frac{1}{r_C} = \frac{1}{\sqrt{\pi}}\int_{-\infty}^\infty dt\,\exp(-r^2_C\,t^2).
+\end{equation}
+Inserting this into $V_p$ and using the Gaussian product theorem gives
+\begin{eqnarray}
+ V_p & = & \int \exp(-p\,r_P^2)\Big(\frac{1}{\sqrt{\pi}}\int_{-\infty}^\infty\exp(-r^2_C\,t^2)\,dt\Big)\,d\vec r \\
+     & = & \frac{1}{\sqrt{\pi}}\int_{-\infty}^\infty\int\exp\Big(-\frac{pt^2}{p + t^2}R^2_{PC}\Big)\,\exp[-(p + t^2)r^2_S] d\vec r\, dt,
+\end{eqnarray}
+where $\vec R_{PC} = \vec P - \vec C$ and $\vec r_S = \vec r - \vec S$ for some point $\vec S$. Doing the integral over the spatial coordinates reveals that the specific value of $\vec S$ is immaterial:
+\begin{eqnarray}
+ V_p & = & \frac{1}{\sqrt{\pi}}\int_{-\infty}^\infty\exp\Big(-\frac{pt^2}{p + t^2}R^2_{PC}\Big)\Big(\frac{\pi}{p + t^2}\Big)^{3/2}\,dt \\
+     & = & 2\pi\int_0^\infty\exp\Big(-\frac{pt^2}{p + t^2}R^2_{PC}\Big)\frac{dt}{(p + t^2)^{3/2}}.
+\end{eqnarray}
+Next we change integration variable from $t$ to $u$ by defining
+\begin{equation}
+ u^2 = \frac{t^2}{p + t^2}.
+\end{equation}
+This will change the range of integration from $[0,\infty\rangle$ to $[0,1]$. This is beneficial because the final integral at which we arrive will be calculated numerically.
+The change of variables leads to
+\begin{align}
+\label{eq:V_p}
+ V_p & = \frac{2\pi}{p}\int_0^1\exp(-p\,R^2_{PC}\,u^2)\,du \\
+     & = \frac{2\pi}{p}F_0(p\,R^2_{PC}),
+\end{align}
+where $F_0(x)$ is a special instance of the Boys function $F_n(x)$ which is defined as
+\begin{equation}
+ F_n(x) = \int_0^1\exp(-xt^2)\,t^{2n}\,dt.
+\end{equation}
+How to actually evaluate the Boys function will be discussed in section \ref{section:Boys}.
+
+We have now a tremendously simplified way of calculating the integral of $\Lambda_{000}/r_C$. However, we need to integrate $\Lambda_{tuv}/r_C$ for general values of $t$, $u$ and $v$.
+These integrals are actually not that hard to do once the Boys function is calculated:
+\begin{align}
+ V_{ab} & = \sum_{tuv}E^{ab}_{tuv}\int d\vec r \, \frac{\Lambda_{tuv}(p,\vec r_p)}{r_C} \\
+        & = \frac{2\pi}{p}\sum_{tuv}E^{ab}_{tuv} \frac{\partial^{t+u+v} F_0(p R^2_{PC})}{\partial P_x^t \partial P_y^u \partial P_z^v} \\
+        & = \frac{2\pi}{p}\sum_{tuv}E^{ab}_{tuv} R_{tuv}(p,\vec R_{PC}), \label{eq:V_ab}
+\end{align}
+where we have defined
+\begin{equation}
+ R_{tuv}(a,\vec A) = \frac{\partial^{t+u+v} F_0(a A^2)}{\partial A_x^t \partial A_y^u \partial A_z^v}.
+\end{equation}
+So we need to know how to calculate derivatives of the function $F_0$. Note first that
+\begin{equation}
+ \frac{d}{dx}F_n(x) = -F_{n+1}(x).
+\end{equation}
+This means that it is possible to derive analytical expressions for the Coulomb term $V_{ab}$. However, in practice they are calculated recursively in a manner similar to the way we calculate
+the coefficients $E^{ij}_t$. Before presenting the recursion relations, we introduce the so-called auxiliary Hermite integrals
+\begin{equation}
+ R^n_{tuv}(a,\vec A) = (-2a)^n\,\frac{\partial^{t+u+v} F_n(a A^2)}{\partial A_x^t \partial A_y^u \partial A_z^v}.
+\end{equation}
+By starting with the source terms $R^n_{000}(a,\vec A) = (-2a)^n\,F_n(a A^2)$ we can reach the targets $R^0_{tuv}(a,\vec A) = R_{tuv}(a,\vec A)$ through the following
+recurrence relations
+\begin{equation}
+\label{eq:R_recurrence}
+ \begin{split}
+  R^n_{t+1,u,v} & = tR^{n+1}_{t-1,u,v} + A_x R^{n+1}_{tuv} \\
+  R^n_{t,u+1,v} & = uR^{n+1}_{t,u-1,v} + A_y R^{n+1}_{tuv} \\
+  R^n_{t,u,v+1} & = vR^{n+1}_{t,u,v-1} + A_z R^{n+1}_{tuv}.
+ \end{split}
+\end{equation}
+The first of these are derived as follows
+\begin{align}
+ R^{n}_{t+1,u,v} & = (-2a)^n\frac{\partial^{t+u+v}}{\partial A_x^t \partial A_y^u \partial A_z^v} [2aA_xF'_n(aA^2)] \\
+                 & = (-2a)^{n+1}\frac{\partial^{t+u+v}}{\partial A_x^t\partial A_y^u \partial A_z^v}\Big[A_xF_{n+1}(aA^2)\Big] \\
+                 & = (-2a)^{n+1}\frac{\partial^{u+v}}{\partial A_y^u \partial A_z^v}\Big[t\frac{\partial^{t-1}}{\partial A_x^{t-1}} + A_x\frac{\partial^t}{\partial A_x^t}\Big]F_{n+1}(aA^2) \\
+                 & = tR^{n+1}_{t-1,u,v} + A_xR^{n+1}_{tuv},
+\end{align}
+where we have used equation (\ref{eq:derivation_rule}) and the fact that $F'_n(x) = -F_{n+1}(x)$.
+% From these relations it is clear that in order to calculate the values of $R_{tuv}(p,\vec R_{PC})$ needed in (\ref{eq:V_ab}), the Boys function $F_n(p, R^2_{PC})$ has to be
+% evaluated for $n\in\{0,\dots,\mathrm{max}(t_{max}, u_{max}, v_{max})\}$.
+
+
+\subsection{Coulomb integral $g_{acbd}$}
+\label{sec:g_abcd}
+Finally we show how to calculate the Coulomb integral due to the interaction between the electrons. It is given by\footnote{Here $G_a$ is combined with $G_b$ and $G_c$ combined with
+$G_d$ using the Gaussian product rule. In many books on quantum chemistry this is written as \newline
+$\left(G_a(1) G_b(1)|r^{-1}_{12}|G_c(2) G_d(2)\right) =\int\int d\vec r_1 d\vec r_2 G_a(\vec r_1) G_b(\vec r_1) r^{-1}_{12} G_c(\vec r_2) G_d(\vec r_2)$. However, since this
+departs from the usual notation of quantum physics, it will not be used in this thesis.}
+\begin{equation}
+\begin{split}
+  g_{acbd} & = \bra{G_a G_c}\frac{1}{r_{12}}\ket{G_b G_d} \\
+           & = \int\int \frac{\Omega_{ab}(\vec r_1)\Omega_{cd}(\vec r_2)}{r_{12}} d\vec r_1 d\vec r_2 \\
+           & = \sum_{tuv}\sum_{\tau\nu\phi}E^{ab}_{tuv}E^{cd}_{\tau\nu\phi}\int\int\frac{\Lambda_{tuv}(p,\vec r_{1P})\Lambda_{\tau\nu\phi}(q,\vec r_{2Q})}{r_{12}}d \vec r_1 d\vec r_2 \\
+           & = \sum_{tuv}\sum_{\tau\nu\phi}E^{ab}_{tuv}E^{cd}_{\tau\nu\phi}\frac{\partial^{t+u+v}}{\partial P_x^t \partial P_y^u \partial P_z^v}
+                \frac{\partial^{\tau+\nu+\phi}}{\partial Q_x^\tau \partial Q_y^\nu \partial Q_z^\phi} \\
+           &    \hspace{30mm} \int\int\frac{\exp(-pr^2_{1P})\exp(-qr^2_{2Q})}{r_{12}}d \vec r_1 d\vec r_2,
+\end{split}
+\end{equation}
+where, analogous to $p$ and $\vec r_{1P}$, we have defined 
+\begin{equation}
+ \begin{split}
+    q = & c + d\\
+  \vec r_{2Q} = & \vec r_2 - \vec Q \\
+  \vec Q = & \frac{c\,\vec C + d\,\vec D}{c + d}.
+ \end{split}
+\end{equation}
+Thus we need to evaluate the integral
+\begin{equation}
+ V_{pq} = \int\int\frac{\exp(-pr^2_{1P})\exp(-qr^2_{2Q})}{r_{12}}d \vec r_1 d\vec r_2.
+\end{equation}
+By first integrating over $\vec r_1$ and using equation (\ref{eq:V_p}) this can be written as
+\begin{equation}
+ V_{pq} = \int\Big(\frac{2\pi}{p}\int_0^1\exp(-p\,r^2_{2P}\,u^2)\,du\Big)\exp(-qr^2_{2Q}) d \vec r_2.
+\end{equation}
+Next we change the order of integration and use the Gaussian product theorem to get
+\begin{equation}
+\begin{split}
+ V_{pq} & = \frac{2\pi}{p}\int_0^1\int\exp(-\frac{pqu^2}{pu^2+q}R^2_{PQ})\exp[-(pu^2+q)r_{2S}^2] d\vec r_2 du \\
+        & = \frac{2\pi}{p}\int_0^1\exp(-\frac{pqu^2}{pu^2+q}R^2_{PQ})\Big(\frac{\pi}{pu^2+q}\Big)^{3/2} du,
+\end{split}
+\end{equation}
+where $\vec R_{PQ} = \vec P - \vec Q$ and $\vec r_{2S} = \vec r_2 - \vec S$ for some point $\vec S$. Again, the actual coordinates of 
+$\vec S$ are immaterial. If we now make the change of variable
+\begin{equation}
+ \frac{v^2}{p+q} = \frac{u^2}{pu^2+q},
+\end{equation}
+we get the result
+\begin{equation}
+ V_{pq} = \frac{2\pi^{5/2}}{pq\sqrt{p+q}}F_0\Big(\frac{pq}{p+q}R^2_{PQ}\Big).
+\end{equation}
+From this we get the final answer
+\begin{equation}
+\begin{split}
+ g_{acbd} & = \frac{2\pi^{5/2}}{pq\sqrt{p+q}}\sum_{tuv}\sum_{\tau\nu\phi}(-1)^{\tau+\nu+\phi}E^{ab}_{tuv}E^{cd}_{\tau\nu\phi} \\
+          & \hspace{40mm} \frac{\partial^{t+u+v+\tau+\nu+\phi}}{\partial P_x^{t+\tau} \partial P_y^{u+\nu} \partial P_z^{v+\phi}}F_0\Big(\frac{pq}{p+q}R^2_{PQ}\Big) \\
+          & = \frac{2\pi^{5/2}}{pq\sqrt{p+q}}\sum_{tuv}\sum_{\tau\nu\phi}(-1)^{\tau+\nu+\phi}E^{ab}_{tuv}E^{cd}_{\tau\nu\phi}R_{t+\tau,u+\nu,v+\phi}(\alpha,\vec R_{PQ}),
+\end{split}
+\end{equation}
+where $\alpha = pq/(p+q)$. The term $(-)^{\tau+\nu+\phi}$ arises due to the fact that
+\begin{equation}
+\frac{\partial}{\partial Q_x} F_0\Big(\frac{pq}{p+q}R^2_{PQ}\Big) = - \frac{\partial}{\partial P_x} F_0\Big(\frac{pq}{p+q}R^2_{PQ}\Big).
+\end{equation}
+
+
+
+
+\section{The Boys function}
+\label{section:Boys}
+
+As shown in the previous section, calculating the Coulomb integrals boils down to evaluating the Boys function
+\begin{equation}
+\label{eq:boys}
+ F_n(x) = \int_0^1\exp(-xt^2)\,t^{2n}\,dt.
+\end{equation}
+Doing this by standard numerical procedures is compuationally
+expensive and should therefore be avoided. This section describes one possible way to calculate the Boys function efficiently.
+
+First note that if $x$ is very large, the function value will hardly be affected by changing the upper limit of the integral from $1$ to $\infty$. Doing this is beneficial
+because then the integral can be calculated exactly. Thus, we have the following approximation for the Boys function for large $x$:
+\begin{equation}
+ F_n(x) \approx \frac{(2n-1)!!}{2^{n+1}}\sqrt{\frac{\pi}{x^{2n+1}}}. \hspace{15mm} (x\hspace{2mm}\mathrm{large})
+\end{equation}
+For small values of $x$ there seems to be no escape from numerical calculation. However, instead of doing the integral at the time of computation, 
+it can be tabulated once and for all at regular values of $x$. For values between the tabulated ones, the function can be calculated by a Taylor expansion centered at the nearest tabulated point $x_t$:
+\begin{equation}
+ F_n(x_t+\Delta x) = \sum_{k=0}^\infty\frac{F_{n+k}(x_t) (-\Delta x)^k}{k!}. \hspace{15mm} (x\hspace{2mm}\mathrm{small})
+\end{equation}
+Computational cost can be reduced even further by calculating the Boys function according to the description above only for the highest values of $n$ needed; for lower values of $n$ the function
+can be found via the recursion relation
+\begin{equation}
+ F_n(x) = \frac{2xF_{n+1}(x)+e^{-x}}{2n+1},
+\end{equation}
+which can be shown by integrating the function by parts.
+
+
+\section{Summary of the integration scheme}
+In the previous sections the integration scheme for GTOs has been derived. We summarise the results in this section. Some of the results are only elaborated fully for the $x$-component as
+the others components are defined similarly.
+
+\subsection*{Gaussian functions}
+The Gaussian functions are given by
+\begin{equation}
+ \begin{split}
+  G_a(\vec r) & = G_{ikm}(a, \vec r_A) = x^i_A\,y^k_A\,z^m_A\exp(-a r^2_A), \\
+  G_b(\vec r) & = G_{jln}(b, \vec r_B) = x^j_B\,y^l_B\,z^n_B\exp(-b r^2_B),
+ \end{split}
+\end{equation}
+where $\vec r_A = \vec r - \vec A$ and $\vec r_B = \vec r - \vec B$. We further define
+\begin{equation}
+\begin{split}
+  p & = a + b, \\
+ \vec P & = \frac{a\vec A + b\vec B}{a + b}.
+\end{split}
+\end{equation}
+
+
+\subsection*{Overlap integral $S_{ab}$}
+The overlap integral
+\begin{equation}
+ S_{ab} = \langle G_a|G_b\rangle
+\end{equation}
+is calculated as
+\begin{equation}
+\label{eq:Sab_compute}
+ S_{ab} = E^{ij}_0\,E^{kl}_0\,E^{mn}_0\,\Big(\frac{\pi}{p}\Big)^{3/2},
+\end{equation}
+where
+\begin{equation}
+ E^{i=0,j=0}_0 = \exp(-\frac{ab}{a+b}X_{AB}^2),
+\end{equation}
+and the desired coefficients are found via
+\begin{equation}
+\begin{split}
+ E^{i+1,j}_t & = \frac{1}{2p}E^{ij}_{t-1} + X_{PA}E^{ij}_t + (t+1)E^{ij}_{t+1}, \\
+ E^{i,j+1}_t & = \frac{1}{2p}E^{ij}_{t-1} + X_{PB}E^{ij}_t + (t+1)E^{ij}_{t+1}.
+\end{split}
+\end{equation}
+
+
+
+\subsection*{Kinetic integral $T_{ab}$}
+The kinetic integral is calculated as
+\begin{equation}
+\label{eq:Tab_compute}
+ T_{ab} = -\frac{1}{2}(T_{ij}\,S_{kl}\,S_{mn} + S_{ij}\,T_{kl}\,S_{mn} + S_{ij}\,S_{kl}\,T_{mn}),
+\end{equation}
+where
+\begin{equation}
+ T_{ij} = 4b^2\,S_{i,j+2} - 2b(2j + 1)S_{i,j} + j(j-1)S_{i,j-2}.
+\end{equation}
+
+\subsection*{Coulomb integral $V_{ab}$}
+The Coulomb integral
+\begin{equation}
+ V_{ab} = \bra{G_a}\frac{1}{r_C}\ket{G_b}
+\end{equation}
+is calculated as
+\begin{equation}
+\label{eq:Vab_compute}
+ V_{ab} = \frac{2\pi}{p}\sum_{tuv}E^{ab}_{tuv} R_{tuv}(p,\vec R_{PC}),
+\end{equation}
+where
+\begin{equation}
+ E^{ab}_{tuv} = E^{ij}_t\,E^{kl}_u\,E^{mn}_v,
+\end{equation}
+and $R_{tuv}(a,\vec A)$ is found by first calculating the source term
+\begin{equation}
+ R^n_{000}(a,\vec A) = (-2a)^n\,F_n(a A^2)
+\end{equation}
+and then iterating towards the target $R^0_{tuv}(a,\vec A) = R_{tuv}(a,\vec A)$ via the recurrence relations
+\begin{equation}
+ \begin{split}
+  R^n_{t+1,u,v} & = tR^{n+1}_{t-1,u,v} + A_x R^{n+1}_{tuv}, \\
+  R^n_{t,u+1,v} & = uR^{n+1}_{t,u-1,v} + A_y R^{n+1}_{tuv}, \\
+  R^n_{t,u,v+1} & = vR^{n+1}_{t,u,v-1} + A_z R^{n+1}_{tuv}.
+ \end{split}
+\end{equation}
+
+
+\subsection*{Coulomb integral $g_{acbd}$}
+The Coulomb integral
+\begin{equation}
+ g_{acbd} = \bra{G_a G_c}\frac{1}{r_{12}}\ket{G_b G_d}
+\end{equation}
+is calculated as
+\begin{equation}
+\label{eq:gabcd_compute}
+ g_{acbd} = \frac{2\pi^{5/2}}{pq\sqrt{p+q}}\sum_{tuv}\sum_{\tau\nu\phi}(-1)^{\tau+\nu+\phi}E^{ab}_{tuv}E^{cd}_{\tau\nu\phi}R_{t+\tau,u+\nu,v+\phi}(\alpha,\vec R_{PQ}),
+\end{equation}
+where
+\begin{equation}
+  \alpha = \frac{pq}{p + q}.
+\end{equation}
+
+

@@ -1,0 +1,65 @@
+
+\chapter{Introduction}
+
+\section{Choice of programming language}
+
+As programming language we have ended up with preferring 
+C++, but all examples discussed in the text have their 
+corresponding Fortran and Python programs on the webpage of this text.
+ 
+Fortran (FORmula TRANslation) was introduced in 1957 and remains in many 
+scientific computing environments the language of choice.
+The latest standard, see Refs.~\cite{f95ref,metcalf1996,marshall1995,f2003}, 
+includes extensions that are
+familiar to users of C++. 
+Some of the most important features of Fortran  include recursive
+subroutines, dynamic storage allocation and pointers, 
+user defined data structures, modules,
+and the ability to manipulate entire arrays. 
+However, there are several good reasons for 
+choosing C++ as programming language for scientific and engineering
+problems. Here are some:
+\begin{itemize}
+\item C++ is now the dominating language in Unix and Windows environments. It is widely available and is
+the language of choice for system programmers.  It is very widespread for developments of non-numerical  software 
+\item The C++ syntax has inspired lots of popular languages, such as Perl, Python and Java.
+\item It is an extremely portable language, all Linux and Unix operated machines have a 
+C++ compiler.
+\item In the last years there has been an enormous effort towards developing numerical libraries
+for C++. Numerous tools (numerical libraries such as MPI\cite{gropp1999,mpiref,cmpi}) are written in C++
+and interfacing them requires knowledge of C++. 
+Most C++ and Fortran compilers compare fairly well when it comes to speed and
+numerical efficiency. Although Fortran 77 and C are regarded as slightly faster than C++ or Fortran,
+compiler improvements during the last few years have diminshed such differences. The Java numerics project
+has lost some of its steam recently, and Java is therefore normally slower than C++ or Fortran.
+\item Complex variables, one of Fortran's strongholds, can also be defined in the new 
+ANSI C++ standard. 
+\item C++ is a language which catches most of the errors as early as possible, typically at compilation
+time. Fortran has some of these features if one omits implicit variable declarations.
+\item C++ is also an object-oriented language, to be contrasted with C and Fortran.
+This means that it supports three fundamental ideas, namely objects, class hierarchies and polymorphism.
+Fortran has, through the \verb? MODULE?  declaration the capability of defining classes, but lacks 
+inheritance, although polymorphism is possible. Fortran is then considered as an object-based
+programming language, to be contrasted with C++ which has the capability of relating classes
+to each other in a hierarchical way.
+\end{itemize}
+
+An important aspect of C++ is its richness with more than 60 keywords allowing for a good balance between object orientation
+and numerical efficiency. Furthermore, careful programming can results in an efficiency close to
+Fortran 77.  The language is well-suited for large projects and has presently good standard libraries suitable
+for computational science projects, although many of these still lag behind the large body of libraries for numerics
+available to Fortran programmers. However, it is not difficult to interface libraries written in Fortran with C++
+codes, if care is exercised.
+Other weak sides are the fact that it can be easy to write inefficient code  and that there are many ways of writing the
+same things, adding to the confusion for beginners  and professionals as well.  The language is also under continuous
+development, which often causes portability problems.
+
+C++ is also a difficult language to learn. Grasping the basics is rather straightforward, but takes time
+to master. A specific problem which often causes 
+unwanted or odd errors is dynamic memory management.
+
+The efficiency of C++ codes are close to those provided by Fortran. This means often that a code
+written in Fortran 77 can be faster, however  for large numerical projects C++ and Fortran 
+are to be preferred. If speed is an issue, one could port critical parts of the code to Fortran 77.
+
+

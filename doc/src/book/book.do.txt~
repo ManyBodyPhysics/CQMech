@@ -1,0 +1,100 @@
+# Note on the Springer T2 style: here we use the modifications
+# introduced in t2do.sty and svmonodo.sty (both are bundled with DocOnce).
+
+TITLE:  Nuclear Many-body Physics; a Computational Approach
+AUTHOR: Morten Hjorth-Jensen, Michigan State University and University of Oslo, Norway
+DATE: today
+
+TOC: on
+
+!split
+========= Preface  =========
+label{ch:preface}
+
+# #include "../chapters/preface/preface.do.txt"
+
+TOC: on
+
+!split
+========= Experimental data and definitions of the many-body problem =========
+label{ch:spdata}
+
+# #include "../chapters/ch2/ch2.do.txt"
+
+!split
+========= Mean-field approaches =========
+label{ch:meanfield}
+
+# #include "../chapters/ch3/ch3.do.txt"
+
+
+!split
+========= Second quantization =========
+label{ch:squant}
+
+# #include "../chapters/ch4/ch4.do.txt"
+
+
+!split
+========= Nuclear forces =========
+label{ch:forces}
+
+# #include "../chapters/ch5/ch5.do.txt"
+
+
+!split
+========= Configuration interaction theory =========
+label{ch:fci}
+
+# #include "../chapters/ch6/ch6.do.txt"
+
+!split
+========= Many-body perturbation theory =========
+label{ch:mbpt}
+
+# #include "../chapters/ch7/ch7.do.txt"
+
+
+!split
+========= Coupled cluster theory =========
+label{ch:cc}
+
+# #include "../chapters/ch8/ch8.do.txt"
+
+
+!split
+========= Similarity Transformation Group methods =========
+label{ch:srg}
+
+# #include "../chapters/ch9/ch9.do.txt"
+
+!split
+========= Monte Carlo Methods =========
+label{ch:mc}
+
+# #include "../chapters/ch10/ch10.do.txt"
+
+
+!split
+========= Infinite matter =========
+label{ch:infmatter}
+
+# #include "../chapters/ch11/ch11.do.txt"
+
+
+
+
+
+!split
+========= Decays =========
+label{ch:decay}
+
+# #include "../chapters/ch12/ch12.do.txt"
+
+
+
+
+!split
+======= References =======
+
+#BIBFILE: ../chapters/papers.pub

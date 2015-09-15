@@ -1,0 +1,438 @@
+
+\chapter{Practical Many-body Perturbation Theory} \label{chap:mbpt}
+
+
+\abstract{In physics we often encounter the problem of determining the root of a function $f(x)$. 
+Especially, we may need to solve non-linear equations of one variable. 
+Such equations are usually divided into two classes, algebraic equations involving
+roots of polynomials and transcendental equations.
+When there is only one independent variable,
+the problem is one-dimensional, namely to find the root or roots of a function.
+Except in linear problems, root finding invariably proceeds by iteration, and
+this is equally true in one or in many dimensions. 
+This means that we cannot solve exactly the equations at hand. Rather, we 
+start with some approximate
+trial solution. The chosen algorithm will in turn improve the solution until some predetermined
+convergence criterion is satisfied. The algoritms we discuss below attempt to implement
+this strategy. We will deal mainly with 
+one-dimensional problems.}
+
+\section{Formal perturbation theory}
+The basic starting point of perturbation theory is to divide the total Hamiltonian $H$ into two parts: One part, $H_0$, of which we are able to find the eigenstates and eigenvalues and
+the remaining part, $V$, which is called the perturbation:
+\begin{equation}
+ H = H_0 + V.
+\end{equation}
+%The Hamiltonian can be split in many different ways, each of which will lead to different perturbation schemes.
+%In this section we will keep the discussion general and not specify $H_0$. Later we will set $H_0$ equal to the Fock operator $\mathcal{F}$.
+When $V=0$, the known solutions to the Schrödinger equation are given by
+\begin{equation}
+ H_0\ket{\Psi^{(0)}_i} = E^{(0)}_i\ket{\Psi^{(0)}_i},
+\end{equation}
+where the superindices indicate that the solutions are of zeroth order, that is, with complete disregard of $V$. Most often we will be interested in the ground state. Of course, $\ket{\Psi^{(0)}_0}$ is not the actual
+ground state, but merely an approximation. To obtain the exact ground state $\ket{\Phi_0}$, an (unknown) correction term $\ket{\gamma}$ must be added:
+\begin{equation}
+ \ket{\Phi_0} = \ket{\Psi^{(0)}_0} + \ket{\gamma}.
+\end{equation}
+The same is true for the energy:
+\begin{equation}
+\label{eq:def_deltaE}
+ \mathscr E_0 = E^{(0)}_0 + \Delta E.
+\end{equation}
+In perturbation theory, the goal is to estimate the corrections $\ket{\gamma}$ and $\Delta E$ order by order in terms of the perturbation $V$:
+\begin{align}
+ \ket{\gamma} & = \ket{\Psi^{(1)}_0} + \ket{\Psi^{(2)}_0} + \dots \\
+ \Delta E  & = E^{(1)}_0 + E^{(2)}_0 + \dots
+\end{align}
+where, as before, the superindices indicate the order of the perturbation $V$.
+The hope is that most of the physics is captured by the zeroth order Hamiltonian $H_0$ so that the two series above converge as fast as possible.
+
+It will be assumed that $\langle\Psi^{(0)}_0|\gamma\rangle = 0$, i.e., that there is no overlap between the unperturbed solution and the correction. Furthermore, we will let the unperturbed
+solution be normalised, which means that the overlap between the unperturbed and exact solution is equal to unity:
+\begin{equation}
+\label{eq:intermediate_normalisation}
+ \langle\Psi^{(0)}_0|\Phi_0\rangle = \bra{\Psi^{(0)}_0}\big(\ket{\Psi^{(0)}_0} + \ket{\gamma}\big) = 1 + 0 = 1.
+\end{equation}
+This is often referred to as intermediate normalisation.
+
+The general expression for the energy correction $\Delta E$ can be derived from the Schrödinger equation as follows:
+\begin{equation}
+\begin{split}
+ (H_0 + V)\ket{\Phi_0} & = \mathscr E_0\ket{\Phi_0}, \\
+ \bra{\Psi^{(0)}_0}(H_0 + V)\ket{\Phi_0} & = \mathscr E_0\langle\Psi^{(0)}_0|\Phi_0\rangle, \\
+ \bra{\Psi^{(0)}_0}H_0\ket{\Phi_0} + \bra{\Psi^{(0)}_0}V\ket{\Phi_0} & = \mathscr E_0, \\
+ \langle H_0\Psi^{(0)}_0|\Phi_0\rangle + \bra{\Psi^{(0)}_0}V\ket{\Phi_0} & = \mathscr E_0, \\
+ E^{(0)}_0 + \bra{\Psi^{(0)}_0}V\ket{\Phi_0} & = \mathscr E_0,
+\end{split}
+\end{equation}
+so that
+\begin{equation}
+\label{eq:PT_DeltaE}
+ \Delta E = \bra{\Psi^{(0)}_0}V\ket{\Phi_0}.
+\end{equation}
+Here we have used equations (\ref{eq:def_deltaE}) and (\ref{eq:intermediate_normalisation}) and the fact that $H_0$ is Hermitian.
+Once we have an order by order expansion of $\ket{\Phi_0}$, this will give us an order by order expansion also of $\Delta E$.
+
+To make further progress, we define the projection operators $P$ and $Q$:
+\begin{align}
+ P & = \ket{\Psi^{(0)}_0}\bra{\Psi^{(0)}_0}, \\
+ Q & = \sum_{i=1}^\infty \ket{\Psi^{(0)}_i}\bra{\Psi^{(0)}_i}.
+\end{align}
+When acting on the state $\ket{\Phi_0}$, $P$ picks out the part which is parallel with $\ket{\Psi^{(0)}_0}$.
+This is easily shown by expressing $\ket{\Phi_0}$ in the basis $\left\{\ket{\Psi^{(0)}_i}\right\}_{i=0}^\infty$:
+\begin{equation}
+ P\ket{\Phi_0} = \ket{\Psi^{(0)}_0}\bra{\Psi^{(0)}_0} \sum_{j=0}^\infty C_j\ket{\Psi^{(0)}_j} = C_0\ket{\Psi^{(0)}_0}.
+\end{equation}
+Similarly, $Q$ picks out the part which is orthogonal to $\ket{\Psi^{(0)}_0}$ since $PQ = QP = 0$. Note also that $P^2 = P$, $Q^2 = Q$ and $P+Q = I$.
+Furthermore, $P$ commutes with $H_0$:
+\begin{equation}
+\begin{split}
+ H_0 P \ket{\Phi_0} & = H_0 P \sum_{i=0}^\infty C_i \ket{\Psi^{(0)}_i} = H_0 C_0 \ket{\Psi^{(0)}_0} =  C_0 E^{(0)}_0 \ket{\Psi^{(0)}_0}, \\
+ P H_0 \ket{\Phi_0} & = P H_0 \sum_{i=0}^\infty C_i \ket{\Psi^{(0)}_i} = P \sum_{i=0}^\infty C_i E^{(0)}_i \ket{\Psi^{(0)}_i} = C_0 E^{(0)}_0 \ket{\Psi^{(0)}_0}.
+\end{split}
+\end{equation}
+Also, since $Q = I - P$, $Q$ commutes with $H_0$ as well.
+
+We now have the ingredients necessary to find a perturbative expansion of $\ket{\Phi_0}$. The starting point is a slight rewrite of the Schrödinger equation:
+\begin{equation}
+ (\zeta - H_0) \ket{\Phi_0} = (V - \mathscr E_0 + \zeta)\ket{\Phi_0},
+\end{equation}
+where $\zeta$ is a hitherto unspecified parameter. Different choices of $\zeta$ will lead to different perturbation schemes. Two very common choices are
+$\zeta = \mathscr E_0$ and $\zeta = E^{(0)}_0$ which lead to Brillouin-Wigner and Rayleigh-Schrödinger perturbation theory, respectively \cite{Bartlett}.
+Acting from the left with the operator $Q$ on both sides, and using the fact that $Q^2 = Q$ and $[Q,H_0]=0$ leads to
+\begin{equation}
+\label{eq:Q(z-H0)QPhi}
+ Q(\zeta - H_0)Q \ket{\Phi_0} = Q(V - \mathscr E_0 + \zeta)\ket{\Phi_0}.
+\end{equation}
+We now need an expression for the inverse of $Q(\zeta - H_0)Q$. As long as $\zeta$ is not equal to any of the eigenvalues $\{E^{(0)}_i\}_{i=1}^\infty$, this
+exists and is equal to
+\begin{equation}
+ R_0(\zeta) = \frac{Q}{\zeta - H_0} = \sum_{i=1}^\infty\sum_{j=1}^\infty\ket{\Psi^{(0)}_i}\bra{\Psi^{(0)}_i}(\zeta - H_0)^{-1}\ket{\Psi^{(0)}_j}\bra{\Psi^{(0)}_j},
+\end{equation}
+which is called the resolvent of $H_0$. Writing $R_0(\zeta)$ as the fraction above is justified by the fact that $Q$ commutes with $H_0$.
+
+Acting with $R_0(\zeta)$ from the left on both sides of equation (\ref{eq:Q(z-H0)QPhi}) gives
+\begin{equation}
+ Q\ket{\Psi_0} = R_0(\zeta)(V - \mathscr E_0 + \zeta)\ket{\Phi_0},
+\end{equation}
+and using the fact that $(P+Q)\ket{\Phi_0} = \ket{\Phi_0}$ leads to
+\begin{equation}
+ \ket{\Phi_0} = \ket{\Psi^{(0)}_0} + R_0(\zeta)(V - \mathscr E_0 + \zeta)\ket{\Phi_0}.
+\end{equation}
+Substituting the expression into itself gives
+\begin{equation}
+\begin{split}
+ \ket{\Phi_0} = &             \ket{\Psi^{(0)}_0} + R_0(\zeta)(V - \mathscr E_0 + \zeta)\ket{\Psi^{(0)}_0} \\
+	      & +  [R_0(\zeta)(V - \mathscr E_0 + \zeta)]^2\ket{\Phi_0},
+ \end{split}
+\end{equation}
+and repeating this process yields the expression we are seeking:
+\begin{equation}
+ \ket{\Phi_0} = \sum_{n=0}^\infty [R_0(\zeta)(V - \mathscr E_0 + \zeta)]^n \ket{\Psi^{(0)}_0}.
+\end{equation}
+The corresponding expansion for the energy is found by inserting this into equation (\ref{eq:PT_DeltaE}):
+\begin{equation}
+ \Delta E = \sum_{n=0}^\infty \bra{\Psi^{(0)}_0}V[R_0(\zeta)(V - \mathscr E_0 + \zeta)]^n \ket{\Psi^{(0)}_0}.
+\end{equation}
+
+
+\section{Rayleigh-Schrödinger perturbation theory}
+Rayleigh-Schrödinger perturbation theory, named after Lord Rayleigh \cite{rayleigh} and Erwin Scrhrödinger \cite{schrodinger},
+is obtained by setting $\zeta = E^{(0)}_0$, which gives
+\begin{equation}
+ \Delta E = \sum_{n=0}^\infty \bra{\Psi^{(0)}_0}V[R_0(E^{(0)}_0)(V - \Delta E)]^n \ket{\Psi^{(0)}_0}.
+\end{equation}
+Writing out the first three terms explicitly:
+\begin{equation}
+ \begin{split}
+  \Delta E = & \bra{\Psi^{(0)}_0}V\ket{\Psi^{(0)}_0} \\
+             & + \bra{\Psi^{(0)}_0}V R_0(V - \Delta E) \ket{\Psi^{(0)}_0} \\
+             & + \bra{\Psi^{(0)}_0}V R_0(V - \Delta E)R_0(V - \Delta E) \ket{\Psi^{(0)}_0} + \dots
+ \end{split}
+\end{equation}
+where the dependence of $R_0$ on $E^{(0)}_0$ has been supressed.
+This is still not a proper perturbative expansion since $\Delta E$ is present also on the right hand side of the equation. We get the correct expansion
+by inserting the expression itself into every occurence of $\Delta E$ on the right hand side. Doing this, and noting that $R_0\ket{\Psi^{(0)}_0} = 0$, gives
+\begin{equation}
+ \begin{split}
+  \Delta E = & \bra{\Psi^{(0)}_0}V\ket{\Psi^{(0)}_0} \\
+             & + \bra{\Psi^{(0)}_0}V R_0 V\ket{\Psi^{(0)}_0} \\
+             & + \bra{\Psi^{(0)}_0}V R_0(V - \bra{\Psi^{(0)}_0}V\ket{\Psi^{(0)}_0})R_0 V\ket{\Psi^{(0)}_0} + \cdots
+ \end{split}
+\end{equation}
+The three lines are the first, second and third order corrections, respectively, to the zero order energy.
+
+
+
+% These expressions are still quite general, and in order to obtain programmable expressions, the parameter $\zeta$ and the zero order Hamiltonian $H_0$ needs to be
+% specified. In this thesis we will be using the Rayleigh-Schrödinger perturbation theory which is obtained by setting $\zeta = E^{(0)}_0$. Furthermore we will
+% set $H_0$ equal to the Fock operator $\mathcal{F}$. The resulting perturbation scheme is often referred to as Møller-Plesset perturbation theory.
+
+
+\section{Møller-Plesset perturbation theory}
+To make further progress, it is necessary to specify the zero order Hamiltonian $H_0$. Setting it equal to the Hartree-Fock Hamiltonian
+\begin{equation}
+ H_0 = \sum_{pq}\bra{p}\mathcal{F}\ket{q}a^\dagger_p a_q,
+\end{equation}
+yields the so-called Møller-Plesset perturbation theory, after Møller and Plesset \cite{MP}.
+If we choose the eigenfunctions of the Fock operator as our single-particle basis,
+then $H_0$ simplifies to
+\begin{equation}
+ H_0 = \sum_{pq}\bra{p}\varepsilon_q\ket{q}a^\dagger_p a_q = \sum_{pq}\varepsilon_q\delta_{pq} a^\dagger_p a_q = \sum_p \varepsilon_p a^\dagger_p a_p.
+\end{equation}
+Furthermore, the unperturbed state $\ket{\Psi_0^{(0)}}$ is then equal to the Hartree-Fock
+determinant $\ket{\Psi_0}$. It is per definition an eigenstate of the
+unperturbed Hamiltonian
+\begin{equation}
+ H_0 \ket{\Psi_0} = \sum_p \varepsilon_p a^\dagger_p a_p \ket{123\dots N} = \sum_{i=1}^N \varepsilon_i \ket{\Psi_0},
+\end{equation}
+Thus the zero order energy is the sum of the Hartree-Fock orbital energies
+\begin{equation}
+\label{eq:pert_zero_order}
+ E^{(0)}_0 = \sum_{i=1}^N \varepsilon_i.
+\end{equation}
+
+Next we show how this choice of $H_0$ determines the perturbation $V$. The Hamiltonian can be written as
+\begin{equation}
+ H = H_0 + (H_1 - H_0 + H_2),
+\end{equation}
+where $H_1$ and $H_2$ are the one- and two-body terms defined in equations (\ref{eq:H1_2Q}) and (\ref{eq:H2_2Q_AS}), respectively.
+This means that 
+\begin{equation}
+ \begin{split}
+  V & = H_1 - H_0 + H_2 \\
+    & = \sum_{pq}[\bra{p}h\ket{q} - \bra{p}\mathcal{F}\ket{q}]a^\dagger_p a_q + \frac{1}{4}\sum_{pqrs}\langle pq||rs\rangle a^\dagger_p a^\dagger_q a_s a_r \\
+    & = -\sum_{pq}\bra{p}(\mathcal J - \mathcal K)\ket{q}a^\dagger_p a_q + \frac{1}{4}\sum_{pqrs}\langle pq||rs\rangle a^\dagger_p a^\dagger_q a_s a_r,
+ \end{split}
+\end{equation}
+where $\mathcal J$ and $\mathcal K$ are defined in equations (\ref{eq:J_operator}) and (\ref{eq:K_operator}), respectively.
+This form of $V$ seems to suggest that it has a one-body as well as a two-body part. However, normal ordering the operator with respect to $\ket{\Psi^{(0)}_0}$ as the Fermi vacuum
+reveals that the one-body part of $V$ cancels out. Doing exactly the same calculations as in section \ref{sec:Normal_ordered_operators} leads to
+\begin{equation}
+ \begin{split}
+  V  = & -\sum_{pq}\bra{p}(\mathcal J - \mathcal K)\ket{q}\{a^\dagger_p a_q\} - \sum_i\bra{i}(\mathcal J - \mathcal K)\ket{i} \\
+       & + \frac{1}{4}\sum_{pqrs}\langle pq||rs\rangle \{a^\dagger_p a^\dagger_q a_s a_r\} + \sum_{pq}\sum_i \langle pi||qi\rangle \{a^\dagger_p a_q\} \\
+       & + \frac{1}{2}\sum_{ij}\langle ij||ij\rangle
+ \end{split}
+\end{equation}
+Noting that $\bra{p}(J - K)\ket{q} = \langle pi||qi\rangle$, the one-body parts now cancel, and we arrive at
+\begin{equation}
+\label{eq:V}
+ V = \frac{1}{4}\sum_{pqrs}\langle pq||rs\rangle \{a^\dagger_p a^\dagger_q a_s a_r\} - \frac{1}{2}\sum_{ij}\langle ij||ij\rangle.
+\end{equation}
+This form of the perturbation makes it easier to evaluate the energy corrections.
+
+The first order correction is:
+\begin{equation}
+\label{eq:pert_1st_order}
+ E^{(1)}_0 = \bra{\Psi_0}V\ket{\Psi_0} = - \frac{1}{2}\sum_{ij}\langle ij||ij\rangle,
+\end{equation}
+since the expectation of the normal product is equal to zero. Comparing equations (\ref{eq:pert_zero_order}) and (\ref{eq:pert_1st_order}) with equation
+(\ref{eq:E_ref2}) shows that the first order correction is included in the Hartree-Fock energy
+\begin{equation}
+ E_0 = E^{(0)}_0 + E^{(1)}_0.
+\end{equation}
+To clearify, $E_0$ is the Hartree-Fock energy (reference energy), and $E_0^{(i)}$ is the $i'$th order correction to the exact energy $\mathscr E_0$.
+
+\section{Second order perturbation theory (MP2)}
+The expression for the second order correction is somewhat more complicated. It is given by
+\begin{equation}
+ E^{(2)}_0 = \bra{\Psi^{(0)}_0}V R_0 V\ket{\Psi^{(0)}_0}.
+\end{equation}
+Because of the resolvent $R_0$, only the normal product, $W$, of equation (\ref{eq:V}) survives, so that we get
+\begin{equation}
+ E^{(2)}_0 = \bra{\Psi^{(0)}_0}W R_0 W\ket{\Psi^{(0)}_0}.
+\end{equation}
+We have already calculated an almost identical expression in section \ref{sec:Diagrammatic_notation}. The only difference is that the resolvent
+\begin{equation}
+ R_0 = \frac{Q}{E_0 - H_0} = \sum_{ia}^\infty \frac{\ket{\Psi^a_i}\bra{\Psi^a_i}}{\varepsilon_i - \varepsilon_a}
+                             + \sum_{i<j,a<b}\frac{\ket{\Psi^{ab}_{ij}}\bra{\Psi^{ab}_{ij}}}{\varepsilon_i + \varepsilon_j - \varepsilon_a - \varepsilon_b} + \dots
+\end{equation}
+is squeezed between the two $W$ operators. This simply has the effect that each term in equation (\ref{eq:W2}) is divided by an energy denominator
+\begin{equation}
+ \frac{1}{\varepsilon_i + \varepsilon_j - \varepsilon_a - \varepsilon_b}
+\end{equation}
+which yields the result
+\begin{equation}
+\label{eq:MP2}
+ E^{(2)}_0 = \frac{1}{4}\sum_{ijab}\frac{|\langle ij||ab\rangle|^2}{\varepsilon_i+\varepsilon_j-\varepsilon_a-\varepsilon_b}.
+\end{equation}
+This can be read off directly from the diagram of figure \ref{fig:MP2} according to the rules of section \ref{sec:Diagrammatic_notation} and
+the following additional rule. Draw a horizontal line between each operator in the diagram.
+Each such line, called resolvent line, will contribute with a factor in the energy denominator. The factor is equal to the sum of all hole lines passing through minus the sum
+of all particle lines passing through.
+\begin{figure}
+ \begin{center}
+  \includegraphics[scale=1.0]{perturbation_theory/figures/MP2.pdf}
+  \caption{Diagrammatic representation of the second order correction to the energy of Møller-Plesset perturbation theory.}
+  \label{fig:MP2}
+ \end{center}
+\end{figure}
+
+
+% The resolvent $R_0$ is given by
+% \begin{equation}
+%  R_0 = \frac{Q}{E_0 - H_0} = \sum_{i=1}^\infty \frac{\ket{\Psi^{(0)}_i}\bra{\Psi^{(0)}_i}}{E_0 - E^{(0)}_i},
+% \end{equation}
+% where the states $\{\ket{\Psi^{(0)}_i}\}_{i=1}^\infty$ include all eigenstates of the zero order Hamiltonian $H_0$ except the ground state $\ket{\Psi^{(0)}_0}$.
+% In terms of particle- and hole-states, the resolvent can be written as
+% \begin{equation}
+%  R_0 = \sum_{ia}\frac{\ket{\Psi^a_i}\bra{\Psi^a_i}}{\varepsilon_i - \varepsilon_a}
+%           + \sum_{i<j, a<b}\frac{\ket{\Psi^{ab}_{ij}}\bra{\Psi^{ab}_{ij}}}{\varepsilon_i + \varepsilon_j - \varepsilon_a - \varepsilon_b} + \cdots
+% \end{equation}
+% We will use Wick's generalised theorem to calculate the second order correction. From the theorem it follows that only the
+% two-particle-two-hole states will give non-zero terms. This means that
+% \begin{equation}
+%  \begin{split}
+%   E^{(2)}_0 = & \frac{1}{16}\sum_{pqrs}\sum_{tuvw}\sum_{i<j,a<b}\frac{\langle pq||rs\rangle\langle tu||vw\rangle}{\varepsilon_i + \varepsilon_j - \varepsilon_a - \varepsilon_b} 
+%                     \bra{\Psi^{(0)}_0}\{a^\dagger_p a^\dagger_q a_s a_r\} \{a^\dagger_a a^\dagger_b a_j a_i\} \ket{{\Psi^{(0)}_0}} \\
+%                    & \bra{{\Psi^{(0)}_0}} \{a^\dagger_i a^\dagger_j a_b a_a\} \{a^\dagger_t a^\dagger_u a_w a_v\}\ket{{\Psi^{(0)}_0}}.
+%  \end{split}
+% \end{equation}
+% The only non-zero contractions are those between creation and annihilation operators. Thus
+% \newpage
+% \begin{displaymath}
+%  \contraction[4ex]{E^{(2)}_0 =  \frac{1}{16}\sum_{pqrs}\sum_{tuvw}\sum_{i<j,a<b}\frac{\langle pq||rs\rangle\langle tu||vw\rangle}{\varepsilon_i + \varepsilon_j - \varepsilon_a - \varepsilon_b}
+%               \bra{\Psi^{(0)}_0}\{}{a}{{}^\dagger_p a^\dagger_q a_s a_r\} \{a^\dagger_a a^\dagger_b a_j}{a}
+%  \contraction[3ex]{E^{(2)}_0 =  \frac{1}{16}\sum_{pqrs}\sum_{tuvw}\sum_{i<j,a<b}\frac{\langle pq||rs\rangle\langle tu||vw\rangle}{\varepsilon_i + \varepsilon_j - \varepsilon_a - \varepsilon_b}
+%                    \bra{\Psi^{(0)}_0}\{a^\dagger_p}{a}{{}^\dagger_q a_s a_r\} \{a^\dagger_a a^\dagger_b}{a}
+%  \contraction[2ex]{E^{(2)}_0 =  \frac{1}{16}\sum_{pqrs}\sum_{tuvw}\sum_{i<j,a<b}\frac{\langle pq||rs\rangle\langle tu||vw\rangle}{\varepsilon_i + \varepsilon_j - \varepsilon_a - \varepsilon_b}
+%                    \bra{\Psi^{(0)}_0}\{a^\dagger_p a^\dagger_q}{a}{{}_s a_r\} \{a^\dagger_a}{a}
+%  \contraction{E^{(2)}_0 =  \frac{1}{16}\sum_{pqrs}\sum_{tuvw}\sum_{i<j,a<b}\frac{\langle pq||rs\rangle\langle tu||vw\rangle}{\varepsilon_i + \varepsilon_j - \varepsilon_a - \varepsilon_b}
+%                    \bra{\Psi^{(0)}_0}\{a^\dagger_p a^\dagger_q a_s}{a}{{}_r\} \{}{a}
+%  E^{(2)}_0 =  \frac{1}{16}\sum_{pqrs}\sum_{tuvw}\sum_{i<j,a<b}\frac{\langle pq||rs\rangle\langle tu||vw\rangle}{\varepsilon_i + \varepsilon_j - \varepsilon_a - \varepsilon_b}
+%                    \bra{\Psi^{(0)}_0}\{a^\dagger_p a^\dagger_q a_s a_r\} \{a^\dagger_a a^\dagger_b a_j a_i\} \ket{{\Psi^{(0)}_0}}
+% \end{displaymath}
+% \begin{equation}
+%  \contraction[4ex]{\bra{{\Psi^{(0)}_0}} \{}{a}{{}^\dagger_i a^\dagger_j a_b a_a\} \{a^\dagger_t a^\dagger_u a_w}{a}
+%  \contraction[3ex]{\bra{{\Psi^{(0)}_0}} \{a^\dagger_i}{a}{{}^\dagger_j a_b a_a\} \{a^\dagger_t a^\dagger_u}{a}
+%  \contraction[2ex]{\bra{{\Psi^{(0)}_0}} \{a^\dagger_i a^\dagger_j}{a}{{}_b a_a\} \{a^\dagger_t}{a}
+%  \contraction{\bra{{\Psi^{(0)}_0}} \{a^\dagger_i a^\dagger_j a_b}{a}{{}_a\} \{}{a}
+%  \bra{{\Psi^{(0)}_0}} \{a^\dagger_i a^\dagger_j a_b a_a\} \{a^\dagger_t a^\dagger_u a_w a_v\}\ket{{\Psi^{(0)}_0}} + \text{15 more terms}
+% \end{equation}
+% The 15 other terms are due to the fact that there are four possible ways of contracting the first as well as the second vacuum expectation, resulting
+% in a total of 16 terms. Each change of order in the contractions introduces a minus sign which in turn can be compensated for by using the antisymmetry of
+% the matrix elements. This means that all the terms are actually equal, and we get
+% \begin{equation}
+% \label{eq:pert_2nd_order}
+%  E^{(2)}_0 = \frac{1}{4}\sum_{i,j}\sum_{a,b}\frac{|\langle ij||ab\rangle|^2}{\varepsilon^{ab}_{ij}},
+% \end{equation}
+% where $\varepsilon^{ab}_{ij} = \varepsilon_i + \varepsilon_j - \varepsilon_a - \varepsilon_b$.
+% Note that a factor of $1/4$ has been introduced by removing the restrictions $i<j$ and $a<b$. The sums over the hole states range from 0 to the number of particles $N$,
+% and the sums over the particle states range from $N+1$ to the number of basis functions $M$.
+% 
+% Clearly, the calculations become more and more laborious as we increase the order of correction. In practice, diagrammatic notation is used to evaluate higher order
+% terms. It will not be introduced here, and the interested reader is referred to Shavitt and Bartlett \cite{Bartlett}. In any case, only second order Møller-Plesset
+% perturbation theory (MP2) will be considered in this thesis.
+
+
+\subsection{MP2 in the RHF-case}
+In the case of RHF, the spin orbitals are assumed to be on the from
+\begin{equation}
+ \{\psi_{2k}(\vec x),\, \psi_{2k+1}(\vec x)\} = \{\phi_k(\vec r)\alpha(s),\, \phi_k(\vec r)\beta(s)\}.
+\end{equation}
+This means that the sum over each spin orbital in equation (\ref{eq:MP2}) can be
+replaced by two sums. The sum over $i$, for example, is
+\begin{equation}
+ \sum_{i=1}^N\psi_i = \sum_{i=1}^{N/2}\phi_i\alpha + \sum_{i=1}^{N/2}\phi_i\beta,
+\end{equation}
+and we get similar sums for the other indices. Inserting this yields
+\begin{equation}
+\begin{split}
+ E^{(2)}_0 = & \frac{1}{4}\sum_{i,j=1}^{N/2}\sum_{a,b=N/2+1}^{M}\frac{1}{\varepsilon^{ab}_{ij}}\Big[|\langle (\phi_i\alpha) (\phi_j\alpha)||(\phi_a\alpha)(\phi_b\alpha)\rangle|^2 \\
+                  & + |\langle (\phi_i\beta) (\phi_j\beta)||(\phi_a\beta)(\phi_b\beta)\rangle|^2 + |\langle (\phi_i\alpha) (\phi_j\beta)||(\phi_a\alpha)(\phi_b\beta)\rangle|^2 \\
+                  & + |\langle (\phi_i\beta) (\phi_j\alpha)||(\phi_a\beta)(\phi_b\alpha)\rangle|^2 + |\langle (\phi_i\alpha) (\phi_j\beta)||(\phi_a\beta)(\phi_b\alpha)\rangle|^2 \\
+                  & + |\langle (\phi_i\beta) (\phi_j\alpha)||(\phi_a\alpha)(\phi_b\beta)\rangle|^2\Big],
+\end{split}
+\end{equation}
+where $M$ is the number of spatial orbitals (equal to the number of spatial basis functions) and
+\begin{equation}
+ \varepsilon^{ab}_{ij} = \varepsilon_i + \varepsilon_j - \varepsilon_a - \varepsilon_b.
+\end{equation}
+Terms which are automatically zero due to spin have not been included. Integrating out spin now yields
+\begin{equation}
+ \begin{split}
+  E^{(2)}_0 = & \frac{1}{4}\sum_{i,j=1}^{N/2}\sum_{a,b=N/2+1}^{M}\frac{1}{\varepsilon^{ab}_{ij}}\Big[|\langle \phi_i\phi_j||\phi_a\phi_b\rangle|^2 \\
+                   & +|\langle \phi_i\phi_j||\phi_a\phi_b\rangle|^2 + |\bra{\phi_i\phi_j}g\ket{\phi_a\phi_b}|^2 \\
+                   & + |\bra{\phi_i\phi_j}g\ket{\phi_a\phi_b}|^2 + |\bra{\phi_i\phi_j}g\ket{\phi_b\phi_a}|^2 \\
+                   & + |\bra{\phi_i\phi_j}g\ket{\phi_b\phi_a}|^2 \Big].
+ \end{split}
+\end{equation}
+Note that the first two terms in the sum have both the direct term and the exchange term, whereas in the rest of the terms only one of these (direct or exchange) survives.
+Collecting equal terms finally gives
+\begin{equation}
+\label{eq:RMP2}
+ E^{(2)}_0 = \sum_{i,j=1}^{N/2}\sum_{a,b=N/2+1}^{M}\frac{\bra{ij}g\ket{ab}\big(2\bra{ab}g\ket{ij} - \bra{ab}g\ket{ji}\big)}{\varepsilon^{ab}_{ij}}.
+\end{equation}
+Note that in this expression the explicit appearance of $\phi$ has been supressed. To avoid
+confusion as to whether the sum is over spin orbitals or spatial orbitals (in this case it
+is the latter), we shall use the following convention. If the summation ranges are given
+explicitly, the sum is over spatial orbitals. Otherwise, the sum is over spin orbitals.
+
+
+
+
+\subsection{MP2 in the UHF-case}
+In the case of UHF, the spinorbitals are assumed to be on the form
+\begin{equation}
+ \{\psi_{2k}(\vec x),\, \psi_{2k+1}(\vec x)\} = \{\phi^\alpha_{k}(\vec r)\alpha(s),\,\phi^\beta_k(\vec r)\beta(s)\}.
+\end{equation}
+Inserting this in equation (\ref{eq:MP2}) and integrating out spin in the same manner as above yields
+\begin{equation}
+ \begin{split}
+  E^{(2)}_0 = & \frac{1}{4}\sum_{i=1}^{N^\alpha}\sum_{j=1}^{N^\alpha}\sum_{a=N^\alpha+1}^M\sum_{b=N^\alpha+1}^M\frac{|\langle\phi_i^\alpha \phi_j^\alpha||\phi_a^\alpha \phi_b^\alpha\rangle|^2}{\varepsilon^\alpha_i + \varepsilon^\alpha_j - \varepsilon^\alpha_a - \varepsilon^\alpha_b}  \\
+              & +\frac{1}{4}\sum_{i=1}^{N^\beta}\sum_{j=1}^{N^\beta}\sum_{a=N^\beta+1}^M\sum_{b=N^\beta+1}^M\frac{|\langle\phi_i^\beta \phi_j^\beta||\phi_a^\beta \phi_b^\beta\rangle|^2}{\varepsilon^\beta_i + \varepsilon^\beta_j - \varepsilon^\beta_a - \varepsilon^\beta_b}  \\
+              & +\frac{1}{4}\sum_{i=1}^{N^\alpha}\sum_{j=1}^{N^\beta}\sum_{a=N^\alpha+1}^M\sum_{b=N^\beta+1}^M\frac{|\langle\phi_i^\alpha \phi_j^\beta|g|\phi_a^\alpha \phi_b^\beta\rangle|^2}{\varepsilon^\alpha_i + \varepsilon^\beta_j - \varepsilon^\alpha_a - \varepsilon^\beta_b}  \\
+              & +\frac{1}{4}\sum_{i=1}^{N^\beta}\sum_{j=1}^{N^\alpha}\sum_{a=N^\beta+1}^M\sum_{b=N^\alpha+1}^M\frac{|\langle\phi_i^\beta \phi_j^\alpha|g|\phi_a^\beta \phi_b^\alpha\rangle|^2}{\varepsilon^\beta_i + \varepsilon^\alpha_j - \varepsilon^\beta_a - \varepsilon^\alpha_b}  \\
+              & +\frac{1}{4}\sum_{i=1}^{N^\alpha}\sum_{j=1}^{N^\beta}\sum_{a=N^\beta+1}^M\sum_{b=N^\alpha+1}^M\frac{|\langle\phi_i^\alpha \phi_j^\beta|g|\phi_b^\alpha \phi_a^\beta\rangle|^2}{\varepsilon^\alpha_i + \varepsilon^\beta_j - \varepsilon^\alpha_b - \varepsilon^\beta_a}  \\
+              & +\frac{1}{4}\sum_{i=1}^{N^\beta}\sum_{j=1}^{N^\alpha}\sum_{a=N^\alpha+1}^M\sum_{b=N^\beta+1}^M\frac{|\langle\phi_i^\beta \phi_j^\alpha|g|\phi_b^\beta \phi_a^\alpha\rangle|^2}{\varepsilon^\beta_i + \varepsilon^\alpha_j - \varepsilon^\beta_b - \varepsilon^\alpha_a}.
+ \end{split}
+\end{equation}
+Since the last four terms are equal, this is reduced to
+\begin{equation}
+\label{eq:UMP2}
+ \begin{split}
+  E^{(2)}_0 = & \frac{1}{4}\sum_{i=1}^{N^\alpha}\sum_{j=1}^{N^\alpha}\sum_{a=N^\alpha+1}^M\sum_{b=N^\alpha+1}^M\frac{|\langle\phi_i^\alpha \phi_j^\alpha||\phi_a^\alpha \phi_b^\alpha\rangle|^2}{\varepsilon^\alpha_i + \varepsilon^\alpha_j - \varepsilon^\alpha_a - \varepsilon^\alpha_b}  \\
+              & +\frac{1}{4}\sum_{i=1}^{N^\beta}\sum_{j=1}^{N^\beta}\sum_{a=N^\beta+1}^M\sum_{b=N^\beta+1}^M\frac{|\langle\phi_i^\beta \phi_j^\beta||\phi_a^\beta \phi_b^\beta\rangle|^2}{\varepsilon^\beta_i + \varepsilon^\beta_j - \varepsilon^\beta_a - \varepsilon^\beta_b}  \\
+              & +\sum_{i=1}^{N^\alpha}\sum_{j=1}^{N^\beta}\sum_{a=N^\alpha+1}^M\sum_{b=N^\beta+1}^M\frac{|\langle\phi_i^\alpha \phi_j^\beta|g|\phi_a^\alpha \phi_b^\beta\rangle|^2}{\varepsilon^\alpha_i + \varepsilon^\beta_j - \varepsilon^\alpha_a - \varepsilon^\beta_b}  \\
+ \end{split}
+\end{equation} 
+
+
+
+% \begin{equation}
+%  \begin{split}
+%   \Delta E^{(2)} = & \frac{1}{4}\sum_{i,j=1}^{N/2}\sum_{a,b=N/2+1}^{M/2}\Big[\frac{|\langle i_+ j_+||a_+ b_+\rangle|^2}{\varepsilon^{a_+b_+}_{i_+j_+}}  \\
+%                    & +\frac{|\langle i_- j_-||a_- b_-\rangle|^2}{\varepsilon^{a_-b_-}_{i_-j_-}} + \frac{|\bra{i_+ j_-}g\ket{a_+ b_-}|^2}{\varepsilon^{a_+b_-}_{i_+j_-}}\\
+%                    & +\frac{|\bra{i_- j_+}g\ket{a_- b_+}|^2}{\varepsilon^{a_-b_+}_{i_-j_+}} + \frac{|\bra{i_+ j_-}g\ket{b_+ a_-}|^2}{\varepsilon^{a_-b_+}_{i_+j_-}}\\
+%                    & +\frac{|\bra{i_- j_+}g\ket{b_-a_+}|^2}{\varepsilon^{a_+b_-}_{i_-j_+}}\Big].
+%  \end{split}
+% \end{equation}
+
+
+
+\section{Third order perturbation theory (MP3)}
+The third order correction is given by
+\begin{equation}
+ E^{(3)}_0 = \bra{\Psi^{(0)}_0}V R_0(V - E^{(1)}_0)R_0 V\ket{\Psi^{(0)}_0},
+\end{equation}
+ which, when using that $V = W + E^{(1)}$ and $R_0\ket{\Psi^{(0)}_0} = 0$, can be written as
+\begin{equation}
+ E^{(3)}_0 = \bra{\Psi^{(0)}_0}W R_0 W R_0 W\ket{\Psi^{(0)}_0}.
+\end{equation}
+We can evaluate this expression in the same manner as the second order correction, the only difference now being that there are two resolvent lines.
+The diagrams for this term was set up and discussed in section \ref{sec:Diagrammatic_notation}.
+The result is shown in figure \ref{fig:MP3}.
+
+\begin{figure}
+ \begin{center}
+  \includegraphics[scale=1.0]{perturbation_theory/figures/MP3.pdf}
+  \caption{Diagrammatic representation of the third order correction to the energy of Møller-Plesset perturbation theory.}
+  \label{fig:MP3}
+ \end{center}
+\end{figure}
+
+Integrating out the spin part of these equations are a little bit more involved and tedious than for the second order case, and the derivation and
+results are therefore shown in appendix \ref{chapter:appendix_perturbation}.
+
+

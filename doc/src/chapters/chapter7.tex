@@ -1,0 +1,754 @@
+
+% rewrite the jacobi example
+
+\chapter{CCSD Factorization}
+CCSD with a closed shell spin restricted Hartree Fock (RHF) basis can simplify our CCSD calculations considerably. In this chapter we will find an algorithm for a serial program to solve these equations using the RHF basis. A serial program is one which does not run in parallel. A lot of work have been done to reduce the number of calculations needed for each iteration. Most of this work involves the definition of intermediate variables that can be calculated separately. \\
+
+The factorization is based on the work of J. F. Stanton and J. Gauss and is listed in Ref.\cite{ccsd_fac1}. However at the time of this thesis there where some typos in the factorized equations, so we will repeat the calculations. Also Ref.\cite{ccsd_fac3} holds information on factorization. Additional information on symmetry is found in an article by P. Carsky, Ref.\cite{ccsd_fac2}. H. Koch et al. also published a paper on CCSD using AOs in the equation, and partly avoiding the AO to MO transformation, Ref.\cite{ccsd_fac4}. This is an alternative to our solution. \\
+
+One simplification we have already discussed is the introduction of $D_i^a$ and $D_{ij}^{ab}$. These denominators are independent of the amplitudes, hence they can be calculated and stored outside any iterative procedure.
+
+\newpage
+
+\section{Constructing an algorithm}
+When constructing this CCSD serial algorithm we want a few things in mind. First we wish to minimize the number of FLOPS. Second we want to utilize external linear algebra libraries to perform the calculations. Third we want the option to easily modify the algorithm to work in parallel. This third brings up a few new concerns. One of which is that effective parallel programs are ones that minimize the communication between nodes, in part by  symmetry considerations. This issue will be dealt with in a later chapter in greater detail.
+
+\subsection{Inserting denominators}
+
+\subsubsection{$t_i^a$}
+First we insert $D_i^a$ into Eq. \eqref{t1amp_1}. We also insert our notation for $\langle ab || ij \rangle$ which is
+
+\begin{equation}
+I_{ij}^{ab} = \langle ab || ij \rangle .
+\end{equation}
+
+\begin{align}
+D_i^a t_i^a = & 
+f_{ai} 
++ \sum_{a\not= c} f_{ac} t_i^c 
+- \sum_{i \not= k} f_{ki} t_k^a 
++ \sum_{kc} I_{ka}^{ci} t_k^c 
++ \sum_{kc} f_{kc} t_{ik}^{ac} \nonumber \\ &
++ \frac{1}{2} \sum_{kcd} I_{ka}^{cd} t_{ki}^{cd} 
+- \frac{1}{2} \sum_{klc} I_{kl}^{ci} t_{kl}^{ca} 
+- \sum_{kc} f_{kc} t_i^c t_k^a 
+- \sum_{klc} I_{kl}^{ci} t_k^c t_l^a \nonumber \\ & 
+ + \sum_{kcd} I_{ka}^{cd} t_k^c t_i^d 
+- \sum_{klcd} I_{kl}^{cd} t_k^c t_i^d t_l^a 
++ \sum_{klcd} I_{kl}^{cd} t_k^c t_{li}^{da} \nonumber \\ &
+ - \frac{1}{2} \sum_{klcd} I_{kl}^{cd} t_{ki}^{cd} t_l^a 
+- \frac{1}{2} \sum_{klcd} I_{kl}^{cd} t_{kl}^{ca} t_i^d
+. 
+\end{align}
+The calculation of $t_i^a$ scales as $n^6$.
+
+\subsubsection{$t_{ij}^{ab}$}
+We do the exact same procedure for $t_{ij}^{ab}$ amplitudes. Insert $D_{ij}^{ab}$ and combine terms into the same sums.
+
+\begin{align}
+D_{ij}^{ab} t_{ij}^{ab} = & 
+I_{ab}^{ij}
++ \frac{1}{2} \sum_{kl} I_{kl}^{ij} t_{kl}^{ab} 
++ \frac{1}{2} \sum_{cd} I_{ab}^{cd} t_{ij}^{cd}
++ \frac{1}{4} \sum_{klcd} I_{kl}^{cd}
+t_{ij}^{cd} t_{kl}^{ab} 
+ \nonumber \\ &
+- \sum_{k \not= j} f_{kj} t_{ik}^{ab} 
++ \sum_{k \not= i} f_{ki} t_{jk}^{ab}
++ \sum_{c \not= b} f_{bc} t_{ij}^{ac}
+- \sum_{c \not= a} f_{ac} t_{ij}^{bc}
+ \nonumber \\ &
++ \textbf{P}(ab) 
+\{
+\sum_{kc} f_{kc} t_k^a t_{ij}^{bc}
+- \sum_k I_{kb}^{ij} t_k^a
++ \frac{1}{2} \sum_{kl} I_{kl}^{ij} t_k^a t_l^b 
+\nonumber \\ &
++ \sum_{kcd} 
+(
+I_{ka}^{cd} t_k^c t_{ij}^{db} 
+- \frac{1}{2} I_{kb}^{cd} t_k^a t_{ij}^{cd} 
+)
++ \sum_{klcd} I_{kl}^{cd} (\frac{1}{4} t_k^a t_l^b t_{ij}^{cd} - t_k^c t_l^a t_{ij}^{db} - \frac{1}{2} t_{ij}^{ac} t_{kl}^{bd})
+\}
+\nonumber \\ &
++ \textbf{P}(ij)
+\{
+\sum_c I_{ab}^{cj} t_i^c
++ \frac{1}{2} \sum_{cd} I_{ab}^{cd} t_i^c t_j^d 
++ \sum_{kc} f_{kc} t_i^c t_{jk}^{ab}
+\nonumber \\ &
++ \sum_{klc}
+( 
+\frac{1}{2} 
+I_{kl}^{cj} t_i^c t_{kl}^{ab}
+- I_{kl}^{ci} t_k^c t_{lj}^{ab}
+)
++ \sum_{klcd} I_{kl}^{cd}
+(
+\frac{1}{4} t_i^c t_j^d t_{kl}^{ab} 
+- t_k^c t_i^d t_{lj}^{ab} 
+- \frac{1}{2} t_{ik}^{ab} t_{jl}^{cd}
+)
+\}
+\nonumber \\ &
++ \textbf{P}(ab) \textbf{P}(ij)
+\{
+\sum_{kc}
+(
+I_{kb}^{cj} t_{ik}^{ac}
+- I_{kb}^{ic} t_k^a t_j^c
+)
++ \sum_{kcd}
+(
+I_{ak}^{dc} t_i^d t_{jk}^{bc}
+- I_{kb}^{cd} t_i^c t_k^a t_j^d
+)
+\nonumber \\ &
++ \sum_{klc}
+(
+\frac{1}{2} I_{kl}^{cj} t_i^c t_k^a t_l^b
++ I_{kl}^{ic} t_l^a t_{jk}^{bc}
+)
++ \sum_{klcd} I_{kl}^{cd}
+(
+t_i^c t_l^b t_{kj}^{ad}
++ \frac{1}{4} t_i^c t_k^a t_j^d t_l^b
++ \frac{1}{2} t_{ik}^{ac} t_{lj}^{db} 
+)
+\} . 
+\end{align}
+Calculating this scales as $n^8$ and can go faster with the definition of intermediates. Much of the material presented is based on the work of John F. Stanton and Jurgen Gauss.
+
+\subsection{$[W_1]$}
+
+We first factor out and rewrite the following terms that as they stand now are calculated for all $a,b,i,j$ but only change when $i$ or $j$ changes.
+
+\begin{align}
+& 
+\frac{1}{2} \sum_{kl} I_{kl}^{ij} t_{kl}^{ab} + \frac{1}{2} \textbf{P}(ij) \sum_{klc} I_{kl}^{cj} t_i^c t_{kl}^{ab} + \textbf{P}(ij) \frac{1}{4} \sum_{klcd} I_{kl}^{cd}  t_i^c t_j^d t_{kl}^{ab}
++ \frac{1}{4} \sum_{klcd} I_{kl}^{cd} t_{ij}^{cd} t_{kl}^{ab}
+\nonumber \\ 
+= &
+\frac{1}{2} \sum_{kl} t_{kl}^{ab} \left[ I_{kl}^{ij} +  \sum_c \left(I_{kl}^{cj} t_i^c - I_{kl}^{ci} t_j^c + \frac{1}{2} \sum_{d}  I_{kl}^{cd} (t_i^c t_j^d - t_j^c t_i^d + t_{ij}^{cd})
+ \right) \right]
+\nonumber \\ 
+= & \frac{1}{2} \sum_{kl} t_{kl}^{ab} [W_1]_{ij}^{kl} 
+.
+\end{align}
+Meaning a new intermediate is now defined.
+
+\begin{equation}
+[W_1]^{kl}_{ij} = I_{kl}^{ij} +  \sum_c \left(I_{kl}^{cj} t_i^c - I_{kl}^{ci} t_j^c + \frac{1}{2} \sum_{d}  I_{kl}^{cd} (t_i^c t_j^d - t_j^c t_i^d + t_{ij}^{cd})
+ \right) . \label{intermedw1}
+\end{equation}
+The calculation of this intermediate scales as $n^6$. $[W_1]$ appear one more time in our equations. These terms can also be combined and factorized.
+
+\begin{align}
+& \textbf{P}(ab) \frac{1}{2} \sum_{kl} I_{kl}^{ij} t_k^a t_l^b
++ \frac{1}{2} \sum_{klc} \textbf{P}(ij) \textbf{P}(ab) I_{kl}^{cj} t_i^c t_k^a t_l^b 
+\nonumber \\ &
++ \frac{1}{4} \textbf{P}(ab) \textbf{P}(ij) \sum_{klcd} I_{kl}^{cd} t_i^c t_k^a t_j^d t_l^b
++ \textbf{P}(ab) \sum_{klcd} I_{kl}^{cd} \frac{1}{4} t_k^a t_l^b t_{ij}^{cd}
+\nonumber \\ 
+= &
+\frac{1}{2} \sum_{kl} (t_k^a t_l^b - t_k^b t_l^a) \left[ I_{kl}^{ij} + \sum_c \left( \textbf{P}(ij) I_{kl}^{cj} t_i^c +
+\frac{1}{2} \sum_d I_{kl}^{cd} ( t_i^c t_j^d - t_j^c t_i^d + t_{ij}^{cd}
+\right) \right] \nonumber \\ 
+= &
+\frac{1}{2} \sum_{kl} (t_k^a t_l^b - t_k^b t_l^a) [W_1]_{ij}^{kl} .
+\end{align}
+
+\subsection{$[W_2]$}
+Now we combine the following terms:
+
+\begin{align}
+& - \textbf{P}(ab) \sum_k t_k^a I_{kb}^{ij}
+- \textbf{P}(ab) \frac{1}{2} \sum_{kcd} I_{kb}^{cd} t_{ij}^{cd} t_k^a
+- \textbf{P}(ab) \textbf{P}(ij) \sum_{kc} t_k^a I_{kb}^{ic} t_j^c 
+\nonumber \\
+& - \textbf{P}(ab) \textbf{P}(ij) \sum_{kcd} I_{kb}^{cd} t_i^c t_j^d t_k^a
+\nonumber \\
+= &
+- \textbf{P}(ab) \sum_k t_k^a \left[
+I_{kb}^{ij} 
++ \sum_c \left( I_{kb}^{ic} t_j^c
+- I_{kb}^{jc} t_i^c
++ \frac{1}{2} \sum_{d} I_{kb}^{cd} (t_{ij}^{cd}
++ t_i^c t_j^d - t_j^c t_i^d
+) \right) \right]
+\nonumber \\
+= &
+- \textbf{P}(ab) \sum_k t_k^a [W_2]_{ij}^{kb} \nonumber \\
+= &
+- \textbf{P}(ab) \sum_k t_k^b [W_2]_{ij}^{ak} .
+\end{align}
+We have now defined another intermediate.
+
+\begin{equation}
+[W_2]_{ij}^{ak} = I_{ak}^{ij} 
++ \sum_c \left( I_{ak}^{ic} t_j^c
+- I_{ak}^{jc} t_i^c
++ \frac{1}{2} \sum_{d} I_{ak}^{cd} (t_{ij}^{cd}
++ t_i^c t_j^d - t_j^c t_i^d
+) \right) . \label{intermedW2}
+\end{equation}
+This term scales as $n^6$.
+
+\subsection{$[W_3]$}
+Our next intermediate is defined by the following two terms:
+
+\begin{equation}
+\textbf{P}(ab) \textbf{P}(ij) \sum_{klc} I_{kl}^{ic} t_l^a t_{jk}^{bc}
++ \textbf{P}(ab) \textbf{P}(ij) \sum_{klcd} I_{kl}^{cd} t_i^c t_l^b t_{kj}^{ad} .
+\end{equation}
+
+Since c and d are arbitrary indices we can relabel the second term. We can also use a trick with the permutation operators where
+
+\begin{equation}
+\textbf{P}(ab) \textbf{P}(ij) f(a,b,i,j) = 
+- \textbf{P}(ab) \textbf{P}(ij) f(b,a,i,j) ,
+\end{equation}
+and also the symmetry of I where
+
+\begin{equation}
+I_{kl}^{dc} = - I_{kl}^{cd} ,
+\end{equation}
+
+\begin{equation}
+\Rightarrow =
+\textbf{P}(ab) \textbf{P}(ij) \left(
+\sum_{klc} I_{kl}^{ic} t_l^a t_{jk}^{bc}
++ \sum_{klcd} I_{kl}^{cd} t_i^c t_l^a t_{kj}^{bc}
+\right) .
+\end{equation}
+Here we insert some more symmetry considerations.
+
+\begin{equation}
+\Rightarrow =
+\textbf{P}(ab) \textbf{P}(ij) \left[ \sum_{klc} t_l^a \left(
+- I_{kl}^{ci} t_{jk}^{bc} - \sum_d I_{kl}^{cd} t_i^c t_{jk}^{bc} \right) \right] .
+\end{equation}
+Factorizing out and defining new intermediate.
+
+\begin{align}
+\Rightarrow = &
+- \textbf{P}(ab) \textbf{P}(ij) \left[ \sum_{klc} t_{jk}^{bc} t_l^a \left(
+ I_{kl}^{ci} + \sum_d I_{kl}^{cd} t_i^c \right) \right] \nonumber \\
+= &
+- \textbf{P}(ab) \textbf{P}(ij) \sum_{klc}
+t_{jk}^{bc} t_l^a
+ [W_3]_{ci}^{kl} .
+\end{align}
+
+\begin{equation}
+[W_3]_{ci}^{kl} = I_{kl}^{ci} + \sum_d I_{kl}^{cd} t_i^c  . \label{intermedW3}
+\end{equation}
+This term scales as $n^5$.
+
+\subsection{$[F_1]$}
+Until now all intermediates have been four dimensional. Now we define our first two dimensional intermediate. This is defined from the terms
+
+\begin{align}
+& \textbf{P}(ab) \sum_{kc} f_{kc} t_k^a t_{ij}^{bc}
+- \textbf{P}(ab) \sum_{klcd} I_{kl}^{cd} t_k^c t_l^a t_{ij}^{db} \nonumber \\ 
+= & 
+\textbf{P}(ab) \sum_{kc} f_{kc} t_k^a t_{ij}^{bc}
++ \textbf{P}(ab) \sum_{klcd} I_{kl}^{cd} t_l^d t_k^a t_{ij}^{bc} \nonumber \\
+= &
+\textbf{P}(ab) \sum_{kc} t_k^a t_{ij}^{bc} \left[ f_{kc} + \sum_{ld} I_{kl}^{cd} t_l^d \right] \nonumber \\
+= &
+\textbf{P}(ab) \sum_{kc} t_k^a t_{ij}^{bc} [F_1]_k^c .
+\end{align}
+
+\begin{equation}
+[F_1]_k^c = f_{kc} + \sum_{ld} I_{kl}^{cd} t_l^d . \label{intermedF1}
+\end{equation}
+This intermediate is also repeated when combining the terms
+
+\begin{align}
+& \textbf{P}(ij) \sum_{kc} f_{kc} t_i^c t_{jk}^{ab}
+- \textbf{P}(ij) \sum_{klcd} I_{kl}^{cd} t_k^c t_i^d t_{lj}^{ab} \nonumber \\ 
+= &
+- \textbf{P}(ij) \sum_{kc} f_{kc} t_i^c t_{kj}^{ab}
+- \textbf{P}(ij) \sum_{klcd} I_{kl}^{cd} t_l^d t_i^c t_{kj}^{ab} \nonumber \\
+= &
+- \textbf{P}(ij) \sum_{kc} t_i^c t_{kj}^{ab} \left[
+f_{kc} + \sum_{cd} I_{kl}^{cd} t_l^d \right] \nonumber \\ 
+= &
+- \textbf{P}(ij) \sum_{kc} t_i^c t_{kj}^{ab} [F_1]_k^c
+.
+\end{align}
+This term scales as $n^4$. Inserting this into the equations for $t_{ij}^{ab}$ leaves the following:
+
+\begin{align}
+D_{ij}^{ab} t_{ij}^{ab} = & 
+I_{ab}^{ij}
++ \frac{1}{2} \sum_{kl} (t_k^a t_l^b - t_k^b t_l^a + t_{kl}^{ab}) [W_1]_{ij}^{kl}
++ \frac{1}{2} \sum_{cd} I_{ab}^{cd} t_{ij}^{cd}
+ \nonumber \\ &
+- \sum_{k \not= j} f_{kj} t_{ik}^{ab} 
++ \sum_{k \not= i} f_{ki} t_{jk}^{ab}
+- \sum_{c \not= b} f_{bc} t_{ij}^{ac}
++ \sum_{c \not= a} f_{ac} t_{ij}^{bc}
+ \nonumber \\ &
++ \textbf{P}(ab) 
+\{
+- \sum_k t_k^b [W_2]_{ij}^{ak}
++ \sum_{kc} t_k^a t_{ij}^{bc} [F_1]_k^c
++ \frac{1}{2} \sum_{kl} I_{kl}^{ij} t_k^a t_l^b 
+\nonumber \\ &
++ \sum_{kcd} 
+(
+I_{ka}^{cd} t_k^c t_{ij}^{db} 
+)
++ \sum_{klcd} I_{kl}^{cd} 
+(
+\frac{1}{4} t_k^a t_l^b t_{ij}^{cd} 
+- \frac{1}{2} t_{ij}^{ac} t_{kl}^{bd}
+)
+\}
+\nonumber \\ &
++ \textbf{P}(ij)
+\{
+- \sum_{kc} t_i^c t_{kj}^{ab} [F_1]_k^c
++ \sum_c I_{ab}^{cj} t_i^c
++ \frac{1}{2} \sum_{cd} I_{ab}^{cd} t_i^c t_j^d 
+\nonumber \\ &
++ \sum_{klc}
+( 
+- I_{kl}^{ci} t_k^c t_{lj}^{ab}
+)
++ \sum_{klcd} I_{kl}^{cd}
+(
+- \frac{1}{2} t_{ik}^{ab} t_{jl}^{cd}
+)
+\}
+\nonumber \\ &
++ \textbf{P}(ab) \textbf{P}(ij)
+\{
+\sum_{kc}
+(
+I_{kb}^{cj} t_{ik}^{ac}
+)
++ \sum_{kcd}
+(
+I_{ak}^{dc} t_i^d t_{jk}^{bc}
+)
+\nonumber \\ &
++ \sum_{klc}
+(
+\frac{1}{2} I_{kl}^{cj} t_i^c t_k^a t_l^b
+- t_{jk}^{bc} t_l^a [W_3]_{ci}^{kl}
+)
++ \sum_{klcd} I_{kl}^{cd}
+(
+\frac{1}{4} t_i^c t_k^a t_j^d t_l^b
++ \frac{1}{2} t_{ik}^{ac} t_{lj}^{db} 
+)
+\} .
+\end{align}
+
+\subsection{$[F_2]$}
+We now combine the terms:
+
+\begin{align}
+& \sum_{k \not= i} f_{ki} t_{jk}^{ab}
+- \sum_{k \not= j} f_{kj} t_{ik}^{ab} 
+- \textbf{P}(ij) \sum_{kc} t_i^c t_{kj}^{ab} [F_1]_k^c
+\nonumber \\ &
+- \textbf{P}(ij) \sum_{klcd} I_{kl}^{cd} \frac{1}{2} t_{ik}^{ab} t_{jl}^{cd}
+- \textbf{P}(ij) \sum_{klc} I_{kl}^{ci} t_k^c t_{lj}^{ab} .
+\end{align}
+We notice that the two terms $\sum_{k \not= i} f_{ki} t_{jk}^{ab}$ and $\sum_{k \not= j} f_{kj} t_{ik}^{ab}$ can be written in terms of $\textbf{P}(ij)$ and $\delta_{ki}$.
+
+\begin{align}
+\Rightarrow = &
+\textbf{P}(ij) \left[
+\sum_{k} (1 - \delta_{ki}) f_{ki} t_{jk}^{ab}
+- \sum_{kc} t_i^c t_{kj}^{ab} [F_1]_k^c
+- \sum_{klcd}  I_{kl}^{cd} \frac{1}{2} t_{ik}^{ab} t_{jl}^{cd}
+- \sum_{klc} I_{kl}^{ci} t_k^c t_{lj}^{ab}
+\right]
+\nonumber \\
+= &
+\textbf{P}(ij) \left[
+\sum_{k} (1 - \delta_{ki}) f_{ki} t_{jk}^{ab}
++ \sum_{kc} t_i^c t_{jk}^{ab} [F_1]_k^c
++ \sum_{klcd}  I_{kl}^{cd} \frac{1}{2} t_{jk}^{ab} t_{il}^{cd}
++ \sum_{klc} I_{kl}^{ic} t_l^c t_{jk}^{ab}
+\right]
+\nonumber \\
+= &
+\textbf{P}(ij) \sum_k t_{jk}^{ab} \left[
+(1 - \delta_{ki}) f_{ki}
++ \sum_c t_i^c [F_1]_k^c
++ \frac{1}{2} \sum_{lcd} I_{kl}^{cd} t_{il}^{cd}
++ \sum_{lc} I_{kl}^{ic} t_l^c
+\right]
+\nonumber \\
+= &
+\textbf{P}(ij) \sum_k t_{jk}^{ab} [F_2]_i^k .
+\end{align}
+
+\begin{equation}
+[F_2]_i^k = (1 - \delta_{ki}) f_{ki}
++ \sum_c \left[t_i^c [F_1]_k^c
++ \sum_{l} \left( I_{kl}^{ic} t_l^c 
++ \frac{1}{2} \sum_{d} I_{kl}^{cd} t_{il}^{cd}
+\right)
+\right] .
+\label{intermedF2}
+\end{equation}
+This term scales as $n^5$.
+
+\subsection{$[F_3]$}
+We now combine terms within the $\textbf{P}(ab)$ operator.
+
+\begin{align}
+& - \sum_{c \not= b} f_{bc} t_{ij}^{ac}
++ \sum_{c \not= a} f_{ac} t_{ij}^{bc}
+- \textbf{P}(ab) \sum_{kc} t_k^a t_{ij}^{bc} [F_1]_k^c
+- \textbf{P}(ab) \sum_{klcd} \frac{1}{2} I_{kl}^{cd} t_{ij}^{ac} t_{kl}^{bd}
+\nonumber \\ &
++ \textbf{P}(ab) \sum_{kcd} I_{ka}^{cd} t_k^c t_{ij}^{db} \nonumber \\
+= &
+\textbf{P}(ab) \left[
++ \sum_c (1-\delta_{ca}) f_{ac} t_{ij}^{bc}
+- \sum_{kc} t_k^a t_{ij}^{bc} [F_1]_k^c
+- \sum_{klcd} \frac{1}{2} I_{kl}^{cd} t_{ij}^{ac} t_{kl}^{bd}
++ \sum_{kcd} I_{ka}^{cd} t_k^c t_{ij}^{db} 
+\right]
+\nonumber \\
+= &
+\textbf{P}(ab) \left[
++ \sum_c (1-\delta_{ca}) f_{ac} t_{ij}^{bc}
+- \sum_{kc} t_k^a t_{ij}^{bc} [F_1]_k^c
+- \sum_{klcd} \frac{1}{2} I_{kl}^{cd} t_{ij}^{bc} t_{kl}^{ad}
++ \sum_{kcd} I_{ka}^{dc} t_k^d t_{ij}^{bc} 
+\right]
+\nonumber \\
+= &
+\textbf{P}(ab) \sum_c t_{ij}^{bc}
+\left[
+(1-\delta_{ca}) f_{ac}
++ \sum_{k} \left( - t_k^a [F_1]_k^c
++ \sum_{d} \left( I_{ka}^{dc} t_k^d 
+- \sum_{l} \frac{1}{2} I_{kl}^{cd} t_{kl}^{ad} \right) \right)
+\right] \nonumber \\
+= &
+\textbf{P}(ab) \sum_c t_{ij}^{bc} [F_3]_c^a .
+\end{align}
+
+\begin{equation}
+[F_3]_c^a = (1-\delta_{ca}) f_{ac}
+- \sum_{k} \left[ t_k^a [F_1]_k^c
++ \sum_{d} \left( I_{ka}^{cd} t_k^d 
+- \frac{1}{2} \sum_{l} I_{kl}^{cd} t_{kl}^{ad} \right) \right] . \label{intermedF3}
+\end{equation}
+This term scales as $n^5$.
+
+\subsection{$[W_4]$}
+Now we combine the terms inside $\textbf{P}(ab) \textbf{P}(ij)$. 
+
+\begin{align}
+& \textbf{P}(ab) \textbf{P}(ij) \sum_{kc} I_{kb}^{cj} t_{ik}^{ac}
++ \textbf{P}(ab) \textbf{P}(ij) \sum_{kcd} I_{ak}^{dc} t_i^d t_{jk}^{bc}
+\nonumber \\ &
+- \textbf{P}(ab) \textbf{P}(ij) \sum_{klc} t_{jk}^{bc} t_l^a [W_3]_{ci}^{kl}
++ \textbf{P}(ab) \textbf{P}(ij) \sum_{klcd} I_{kl}^{cd} \frac{1}{2} t_{ik}^{ac} t_{lj}^{db}
+\nonumber \\
+= & \textbf{P}(ab) \textbf{P}(ij) t^{bc}_{jk} \left[
+\sum_{kc} I_{ka}^{ci} 
++ \sum_{kcd} I_{ak}^{dc} t_i^d
+- \sum_{klc} t_l^a [W_3]_{ci}^{kl}
++ \frac{1}{2} \sum_{klcd} I_{kl}^{cd} t_{lj}^{db}
+\right] \nonumber \\ 
+= &
+\textbf{P}(ab) \textbf{P}(ij)  \sum_{kc} t^{bc}_{jk} \left[
+I_{ak}^{ic} 
++ \sum_{d} I_{ak}^{dc} t_i^d
+- \sum_{l} t_l^a [W_3]_{ci}^{kl}
++ \frac{1}{2} \sum_{ld} I_{kl}^{cd} t_{il}^{ad}
+\right] .
+\end{align}
+
+\begin{equation}
+[W_4]_{ic}^{ak} = 
+I_{ak}^{ic} 
++ \sum_{d} I_{ak}^{dc} t_i^d
+- \sum_{l} t_l^a [W_3]_{ci}^{kl}
++ \frac{1}{2} \sum_{ld} I_{kl}^{cd} t_{il}^{ad} .
+\label{intermedW4}
+\end{equation}
+In this formulation symmetries where used extensively, the term scales as $n^6$.
+
+\subsection{Inserting intermediates}
+Inserting Eqs. \eqref{intermedF1}, \eqref{intermedF2}, \eqref{intermedF3}, \eqref{intermedW2}, \eqref{intermedW3}, \eqref{intermedW4} and \eqref{intermedw1} then leaves the following:
+
+\begin{align}
+D_{ij}^{ab} t_{ij}^{ab} = & 
+I_{ab}^{ij} +
+\frac{1}{2} \sum_{kl} (t_{kl}^{ab} + t_k^a t_l^b - t_l^a t_k^b) [W_1]_{ij}^{kl}
+- \textbf{P}(ab) \sum_k t_k^b [W_2]_{ij}^{ak}
+\nonumber \\ &
++ \textbf{P}(ij) \sum_k t_{jk}^{ab} [F_2]_i^k
++ \frac{1}{2} \sum_{cd} I_{ab}^{cd} t_{ij}^{cd}
++ \textbf{P}(ab) \sum_c t_{ij}^{bc} [F_3]_c^a
+\nonumber \\ &
++ \textbf{P}(ij) \sum_c I_{ab}^{cj} t_i^c
++ \textbf{P}(ij) \frac{1}{2} \sum_{cd} I_{ab}^{cd} t_i^c t_j^d 
++ \textbf{P}(ab) \textbf{P}(ij) \sum_{kc} t_{jk}^{bc} [W_4]_{ic}^{ak} .
+\end{align}
+We can also define an intermediate $\tau_{ij}^{ab}$.
+
+\begin{equation}
+\tau_{ij}^{ab} = t_{ij}^{ab} + t_i^a t_j^b - t_j^a t_i^b . \label{intermedtau}
+\end{equation}
+This will reduce the number of calculations required, but not by any factor of $n$. Hence using this is a debate of speed versus memory. With this intermediate the equation for $\textbf{T}_2$ amplitudes look like this:
+
+\begin{align}
+D_{ij}^{ab} t_{ij}^{ab} = & 
+I_{ab}^{ij} +
+\frac{1}{2} \sum_{kl} \tau_{kl}^{ab} [W_1]_{ij}^{kl}
+- \textbf{P}(ab) \sum_k t_k^b [W_2]_{ij}^{ak}
+\nonumber \\ &
++ \textbf{P}(ij) \sum_k t_{jk}^{ab} [F_2]_i^k
++ \frac{1}{2} \sum_{cd} I_{ab}^{cd} \tau_{ij}^{cd}
++ \textbf{P}(ab) \sum_c t_{ij}^{bc} [F_3]_c^a
+\nonumber \\ &
++ \textbf{P}(ij) \sum_c I_{ab}^{cj} t_i^c
++ \textbf{P}(ab) \textbf{P}(ij) \sum_{kc} t_{jk}^{bc} [W_4]_{ic}^{ak} . \label{LINK_THIS_SHIT_1_T2}
+\end{align}
+
+\subsection{Inserting into $t_i^a$}
+
+If we combine the terms in the following manner
+
+\begin{align}
+D_i^a t_i^a = &
+- \sum_{k} t_k^a
+\left[
+(1 - \delta_{ki}) f_{ki}
++ \sum_c t_i^c
+f_{kc}
++ \sum_{lc} I_{kl}^{ic} t_l^c
++ \sum_{lcd} I_{kl}^{cd} (\frac{1}{2} t_{il}^{cd} + t_l^d)
+\right]
+\nonumber \\ &
++ f_{ai} 
++ \sum_{c \not= a} f_{ac} t_i^c
++ \sum_{kc} I_{ka}^{ci} t_k^c 
+- \frac{1}{2} \sum_{klc} t_{kl}^{ca}
+\left[
+I_{kl}^{ci} + \sum_d I_{kl}^{cd} t_i^d
+\right]
+\nonumber \\ &
++ \sum_{kc} t_{ik}^{ac} 
+\left[
+f_{kc} + \sum_{ld} I_{kl}^{cd} t_l^d
+\right]
++ \frac{1}{2} \sum_{kcd} I_{ka}^{cd} t_{ki}^{cd} 
++ \sum_{kcd} I_{ka}^{cd} t_k^c t_i^d 
+ .
+\end{align}
+They reduce to the following:
+
+\begin{align}
+D_i^a t_i^a = &
+- \sum_{k} t_k^a
+[F_2]_i^k
++ f_{ai} 
++ \sum_{c \not= a} f_{ac} t_i^c
++ \sum_{kc} I_{ka}^{ci} t_k^c 
+- \frac{1}{2} \sum_{klc} t_{kl}^{ca} [W_3]_{kl}^{ic}
+\nonumber \\ &
++ \sum_{kc} t_{ik}^{ac} [F_1]_k^c
++ \frac{1}{2} \sum_{kcd} I_{ka}^{cd} t_{ki}^{cd} 
++ \sum_{kcd} I_{ka}^{cd} t_k^c t_i^d 
+ .
+\end{align}
+This now scales as $n^6$. The largest scaling factor throughout our algorithm now is $n^6$ whereas prior to intermediates it was $n^8$. This is significantly faster, but we do have 8 (or 7 if $\tau_{ij}^{ab}$ is excluded) intermediates which must be stored. It should be noted that $t_k^c t_i^d = \frac{1}{2} (t_k^c t_i^d - t_i^c t_k^d)$. This can be used to insert $\tau_{ij}^{ab}$ in the equations for $t_i^a$ and the energy. 
+
+\begin{align}
+D_i^a t_i^a = &
+- \sum_{k} t_k^a
+[F_2]_i^k
++ f_{ai} 
++ \sum_{c \not= a} f_{ac} t_i^c
++ \sum_{kc} I_{ka}^{ci} t_k^c 
+- \frac{1}{2} \sum_{klc} t_{kl}^{ca} [W_3]_{kl}^{ic}
+\nonumber \\ &
++ \sum_{kc} t_{ik}^{ac} [F_1]_k^c
++ \frac{1}{2} \sum_{kcd} I_{ka}^{cd} \tau_{ki}^{cd} 
+.  \label{LINK_THIS_SHIT_1_T1}
+\end{align}
+
+\section{SSLRS}
+
+The science team of Scuseria, Scheiner, Lee, Rice and Schaefer are usually refered to as SSLRS. This team have developed some of the most efficient algorithms for our purposes, Ref.\cite{sslrs_citation2}. They have defined quite different intermediates, and I would like to also present their algorithm in short for comparison. If the reader want to develop their own CCSD algorithm this would be a good alternative. See also Ref.\cite{sslrs_citation1}.
+
+\subsection{Description of algorithm}
+
+In their algorithm the amplitude equations are defined with intermediates as the following:
+
+\begin{align}
+- D_i^a t_i^a = &
+- f_{ai} 
+- \sum_{c \not= a} f_{ac} t_i^c 
++ \sum_{k \not= i} f_{ki} t_k^a
++ \sum_{kc} f_{kc} (2t_{ik}^{ac} - \tau_{ik}^{ca})
++ \sum_k g_i^k t_k^a \label{SSRS1} \\ &
+- \sum_c g_c^a t_i^c 
+- \sum_{klc} \left( 2 [D_1]_{li}^{ck} - [D_1]_{ki}^{cl} \right) t_l^c t_k^a \nonumber \\ &
+- \sum_{kc} [2(D_{2A} - D_{2B}) + D_{2C}]_{ci}^{ka} 
+- 2 \sum_k [D_1]_{ik}^{ak}  \nonumber \\ &
++ \sum_{kc} v_{ic}^{ka} t_k^c
+- \sum_{klc} v_{cl}^{ak} ( 2 t_{ki}^{cl} - t_{ik}^{cl} )
++ \sum_{ljc} v_{ci}^{jl} ( 2 t_{lj}^{ac} - t_{jl}^{ac} ) .
+\nonumber
+\end{align}
+
+\begin{equation}
+- D_{ij}^{ab} t_{ij}^{ab} = v_{ij}^{ab} + J_{ij}^{ab} + J_{ji}^{ba} + S_{ij}^{ab} + S_{ji}^{ba} . \label{SSRS2}
+\end{equation}
+
+\begin{equation}
+E_{CCSD} = E_{HF} + 2\sum_{ia} f_{ia} t_a^i 
++ \sum_{abij} v_{ij}^{ab} ( 2 \tau_{ij}^{ab}
++ \tau_{ji}^{ab} ) . \label{SSRS3}
+\end{equation}
+The minus signs on the left side of the equation are present due to the fact that SSLRS use a different definition of the denominators, noted here in the equations are our definitions. Their definitions is equal to ours except for this minus sign. \\
+
+$v_{ij}^{ab}$ is a short notation used by SSLRS for $\langle ab || ij \rangle$. It should be mentioned that the brackets surrounding for example $[D_1]$ is a notation where the brackets are a part of the variable. The rest of the intermediates are now defined.
+
+\begin{align}
+\tau_{ij}^{ab} = & t_{ij}^{ab} + t_i^a t_j^b
+\\ 
+J_{ij}^{ab} = &
+\sum_{c \not= a} f_{ca} t_{ij}^{cb}
+- \sum_{k \not= i} f_{ik} t_{kj}^{ab}
++ \sum_{kc} f_{kc} (t_{ij}^{cb} t_k^b + t_{ik}^{ab} t_j^c )
++ \sum_c g_c^b t_{ij}^{ac} - \sum_k g_j^k t_{ik}^{ab} .
+\end{align}
+
+\begin{align}
+S_{ij}^{ab} = & 
+\frac{1}{2} [B_2]_{ij}^{ab}
+- [E_1^*]_{ij}^{ab}
++ [D_{2A}]_{ab}^{ij}
++ [F_{12}]_{ab}^{ij} 
+ \\ &
++ \sum_{kc} (
+[D_{2A}]_{kj}^{cb} - [D_{2B}]_{kj}^{cb}
++ 2[F_{12}]_{kj}^{cb}
+- [E_1^*]_{cj}^{kb} )
+( t_{ik}^{ac} - \frac{1}{2} t_{ki}^{ac} )
+\nonumber \\ &
++ \sum_{kc} (\frac{1}{2} [D_{2C}]_{kj}^{cb}
+- v_{kj}^{bc} - [F_{11}]_{kj}^{bc} + [E_{11}]_{kj}^{bc}) t_{ic}^{ak}
+\nonumber \\ &
++ \sum_{kc} (\frac{1}{2} [D_{2C}]_{ki}^{cb} - v_{ki}^{bc} - [F_{11}]_{ki}^{bc} 
++ [E_{11}]_{ki}^{bc} ) t_{cj}^{ak}
+\nonumber \\ &
++ \sum_{cd} ( \frac{1}{2} [D_2]_{ij}^{cd} 
++ \frac{1}{2} v_{ij}^{cd} + \frac{1}{2} (
+[E_1]_{ij}^{cd} + [E_1]_{ji}^{dc}))
+\tau_{cd}^{ab}
+\nonumber \\ &
++ \sum_{kc} \{
+([D_{2C}]_{ci}^{kb} - v_{ci}^{bk}) t_j^c
+- ([D_{2A}]_{cj}^{kb} 
+- [D_{2B}]_{cj}^{kb} ) t_i^c
+- ([D_1]_{ji}^{bk} + [F_2]_{ji}^{bk}) \} t_k^a .
+\nonumber
+\end{align}
+The definition of g depends on which index is where. Remembering $\textbf{a}$ is an index indicating an occupied orbital and $\textbf{i}$ is an index indicating a Fermi hole.
+
+\begin{align}
+g_i^a = & 
+2 \sum_b [F_{11}]_{ib}^{ab} 
+- \sum_b [F_{12}]_{ib}^{ba}
+- \sum_b [D_{2A}]_{ib}^{ba}
++ \sum_{bc} (
+[D_1]_{bc}^{ic} - 2[D_1]_{cb}^{ib} ) t_c^a
+\\
+g_a^i = &
+\sum_c \{2([E_1]_{ic}^{ac} + [D_2]_{ic}^{ac} )
+- ([E_1]_{ic}^{ca} + [D_2]_{ic}^{ca}) \} .
+\end{align}
+The rest of the intermediates in the SSLRS algorithm is now defined in order of appearance. 
+
+\begin{equation}
+[D_1]_{ij}^{ab} = \sum_k v_{ik}^{ab} t_j^k .
+\end{equation}
+
+\begin{equation}
+[D_{2A}]_{ij}^{ab} = \sum_{kc}
+v_{ci}^{ka} (2 t_{jc}^{ka} - t_{jc}^{ak}) .
+\end{equation}
+
+\begin{equation}
+[D_{2B}]_{ij}^{ab} = \sum_{kc}
+v_{ci}^{ak} t_{jc}^{ka} .
+\end{equation}
+
+\begin{equation}
+[D_{2C}]_{ij}^{ab} = \sum_{kc}
+v_{ci}^{ak} t_{jc}^{ak} .
+\end{equation}
+
+\begin{equation}
+[B_2]_{ij}^{ab} = \sum_{kl} v_{kl}^{ab} t_{ij}^{kl} .
+\end{equation}
+
+\begin{equation}
+[E_1^*]_{ij}^{ab} = \sum_k v_{ij}^{ak} t_k^b .
+\end{equation}
+
+\begin{equation}
+[F_{12}]_{ij}^{ab} = \sum_c
+v_{ic}^{ab} t_j^c .
+\end{equation}
+
+\begin{equation}
+[F_{11}]_{ij}^{ab} = \sum_c v_{ic}^{ba} t_j^c .
+\end{equation}
+
+\begin{equation}
+[E_{11}]_{ij}^{ab} \sum_c v_{ij}^{cb} t_c^a .
+\end{equation}
+
+\begin{equation}
+[D_2]_{ij}^{ab} = \sum_{cd} v_{cd}^{ab} t_{ij}^{cd} .
+\end{equation}
+
+\begin{equation}
+[E_1]_{ij}^{ab} = \sum_c v_{ic}^{ab} t_j^c .
+\end{equation}
+
+\begin{equation}
+[F_2]_{ij}^{ab} = \sum_{cd} v_{cd}^{ab} \tau_{ij}^{cd} .
+\end{equation}
+
+\subsection{Scaling}
+Specific notice should be paid to $[D_{2A}]$, $[D_{2B}]$, $[D_{2C}]$ and $[F_{2}]$. These intermediates scale as with a factor of $n^6$, where n is the number of orbitals. However it is not necessary to loop over all orbitals as index i,j,k refer to unoccupied orbitals. Indexes a,b,c refer to occupied orbitals. The scaling then reduces to $n_v^3 n_o^3$. Overall the Eq. \eqref{SSRS1}, \eqref{SSRS2} and \eqref{SSRS3} scales as 
+
+\begin{equation}
+\frac{1}{2} n_v^4 n_o^2 + 7 n_v^3 n_o^3 + \left( \frac{1}{2} + \frac{1}{2} \right) n_v^2 n_o^4 . 
+\end{equation} 
+It should be noted that SSLRS does propose this algorithm with the purpose of not only low scaling, but also avoid storage a large number of variables. In their papers they do mention another algorithm with slightly better scaling, but they do argue the extra needed variable storage this requires is a worrying aspect. For this reason the SSLRS algorithm is presented like this in this thesis.\\
+
+Another positive aspect of this algorithm is the emphasis on matrix use. All the $n^6$ and $n^5$ scaling parts of the algorithm is designed so that matrix multiplication libraries can be used. These libraries are often specially designed to be efficient. \\
+
+SSLRS algorithm also scales as $n^6$, but the number of intermediates are much larger. For this reason we chose the prior algorithm.
+
+\section{TCE}
+There are more than one way to factorize the CCSD equations. The best factorization actually depends on the system of interest. This has prompted the interest in the Tensor Contracted Engine, TCE. \\
+
+TCE is an automated code generator for computational chemistry methods. Once the system of interest is known, the TCE aims to construct the optimal code. We will not go in detail on TCE, but additional information can be found in Ref.\cite{tce_citation_numbah_10}. 
+
+
+
+
+

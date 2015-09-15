@@ -1,0 +1,701 @@
+<!--
+Automatically generated HTML file from DocOnce source
+(https://github.com/hplgit/doconce/)
+-->
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<meta name="generator" content="DocOnce: https://github.com/hplgit/doconce/" />
+<meta name="description" content="Nuclear Many-body Physics; a Computational Approach">
+
+<title>Nuclear Many-body Physics; a Computational Approach</title>
+
+<!-- Bootstrap style: bootstrap -->
+<link href="http://netdna.bootstrapcdn.com/bootstrap/3.1.1/css/bootstrap.min.css" rel="stylesheet">
+<!-- not necessary
+<link href="http://netdna.bootstrapcdn.com/font-awesome/4.0.3/css/font-awesome.css" rel="stylesheet">
+-->
+
+
+<script src="http://sagecell.sagemath.org/static/jquery.min.js"></script>
+<script src="http://sagecell.sagemath.org/embedded_sagecell.js"></script>
+<link rel="stylesheet" type="text/css" href="https://sagecell.sagemath.org/static/sagecell_embed.css">
+<script>
+$(function () {
+    // Make the div with id 'mycell' a Sage cell
+    sagecell.makeSagecell({inputLocation:  '#mycell',
+                           template:       sagecell.templates.minimal,
+                           evalButtonText: 'Activate'});
+    // Make *any* div with class 'compute' a Sage cell
+    sagecell.makeSagecell({inputLocation: 'div.compute',
+                           evalButtonText: 'Evaluate'});
+});
+</script>
+
+</head>
+
+<!-- tocinfo
+{'highest level': 0,
+ 'sections': [(' Preface  ', 0, 'ch:preface', 'ch:preface'),
+              (' Introduction ', 0, 'ch:intro', 'ch:intro'),
+              ('Why a text on the nuclear many-body problem ',
+               1,
+               None,
+               '___sec2'),
+              (' How to use this text ', 1, None, '___sec3'),
+              (' Choice of programming languages and computational issues ',
+               1,
+               None,
+               '___sec4'),
+              (' Experimental data and definitions of the many-body problem ',
+               0,
+               'ch:spdata',
+               'ch:spdata'),
+              (' Introduction ', 1, None, '___sec6'),
+              (' Masses and Binding energies ', 1, None, '___sec7'),
+              (' $Q$-values and separation energies ', 1, None, '___sec8'),
+              (' Radii  ', 1, None, '___sec9'),
+              (' Definitions ', 1, None, '___sec10'),
+              (' A modified Hamiltonian  ', 1, None, '___sec11'),
+              (' Numerical solution of the single-particle Schroedinger equation ',
+               1,
+               None,
+               '___sec12'),
+              (' Exercise 1: Masses and binding energies ',
+               2,
+               None,
+               '___sec13'),
+              (' Exercise 2: Eigenvalues and eigenvectors for various single-particle potentials ',
+               2,
+               None,
+               '___sec14'),
+              (' Exercise 3: Operators and Slater determinants ',
+               2,
+               None,
+               '___sec15'),
+              (' Exercise 4: First simple shell-model calculation ',
+               2,
+               None,
+               '___sec16'),
+              (' Mean-field approaches ', 0, 'ch:meanfield', 'ch:meanfield'),
+              (' Derivation of Hartree-Fock equations in coordinate space ',
+               1,
+               None,
+               '___sec18'),
+              (' Definitions and notations ', 1, None, '___sec19'),
+              (' Derivation of Hartree-Fock equations in coordinate space ',
+               1,
+               None,
+               '___sec20'),
+              (' Analysis of Hartree-Fock equations in coordinate space ',
+               1,
+               None,
+               '___sec21'),
+              (' Hartree-Fock by varying the coefficients of a wave function expansion ',
+               1,
+               None,
+               '___sec22'),
+              (' Hartree-Fock algorithm ', 1, None, '___sec23'),
+              (" Analysis of Hartree-Fock equations and Koopman's theorem ",
+               1,
+               None,
+               '___sec24'),
+              (' Exercise 5: Derivation of Hartree-Fock equations ',
+               2,
+               None,
+               '___sec25'),
+              (' Exercise 6: Derivation of Hartree-Fock equations ',
+               2,
+               None,
+               '___sec26'),
+              (' Second quantization ', 0, 'ch:squant', 'ch:squant'),
+              (' Second quantization ', 1, None, '___sec28'),
+              (' One-body operators in second quantization ',
+               1,
+               None,
+               '___sec29'),
+              (' Two-body operators in second quantization ',
+               1,
+               None,
+               '___sec30'),
+              (' Particle-hole formalism ', 1, None, '___sec31'),
+              ('  Summarizing and defining a normal-ordered Hamiltonian ',
+               1,
+               None,
+               '___sec32'),
+              (' Hartree-Fock in second quantization and stability of HF solution ',
+               1,
+               None,
+               '___sec33'),
+              (" Thouless' theorem ", 2, None, '___sec34'),
+              (' New operators ', 2, None, '___sec35'),
+              (" Showing that $|\\tilde{c}\\rangle= |c'\\rangle$  ",
+               2,
+               None,
+               '___sec36'),
+              (' Hartree-Fock in second quantization and stability of HF solution ',
+               2,
+               None,
+               '___sec37'),
+              (' Operators in second quantization ', 1, None, '___sec38'),
+              (' Exercise 7: Relation between basis functions ',
+               2,
+               None,
+               '___sec39'),
+              (' Exercise 8: Matrix elements ', 2, None, '___sec40'),
+              (' Exercise 9: Normal-ordered one-body operator ',
+               2,
+               None,
+               '___sec41'),
+              (' Exercise 10: Normal-ordered two-body operator ',
+               2,
+               None,
+               '___sec42'),
+              (' Exercise 11: Matrix elements using the Slater-Condon rule ',
+               2,
+               None,
+               '___sec43'),
+              (' Exercise 12: Program to set up Slater determinants ',
+               2,
+               None,
+               '___sec44'),
+              (' Exercise 13: Using sympy to compute matrix elements ',
+               2,
+               None,
+               '___sec45'),
+              (' Exercise 14: Using sympy to compute matrix elements ',
+               2,
+               None,
+               '___sec46'),
+              (' Exercise 15: Using sympy to compute matrix elements ',
+               2,
+               None,
+               '___sec47'),
+              (' Exercise 16: Using sympy to compute matrix elements ',
+               2,
+               None,
+               '___sec48'),
+              (' Exercise 17: Using sympy to compute matrix elements ',
+               2,
+               None,
+               '___sec49'),
+              (' Exercise 18: Using sympy to compute matrix elements ',
+               2,
+               None,
+               '___sec50'),
+              (' Exercise 19: Using sympy to compute matrix elements ',
+               2,
+               None,
+               '___sec51'),
+              (' Exercise 20: Diagrammatic representation of Hartree-Fock equations ',
+               2,
+               None,
+               '___sec52'),
+              (' Exercise 21: Derivation of Hartree-Fock equations ',
+               2,
+               None,
+               '___sec53'),
+              (" Wick's theorem ", 1, None, '___sec54'),
+              (' Nuclear forces ', 0, 'ch:forces', 'ch:forces'),
+              (' Introduction ', 1, None, '___sec56'),
+              (' Single-particle and two-particle quantum numbers ',
+               1,
+               None,
+               '___sec57'),
+              (' Clebsch-Gordan coefficients ', 2, None, '___sec58'),
+              (' Quantum numbers and the Schroeodinger equation in relative and CM coordinates ',
+               2,
+               None,
+               '___sec59'),
+              (' Components of the force and isospin ', 1, None, '___sec60'),
+              (' Isospin ', 2, None, '___sec61'),
+              (' Two-body matrix elements ', 1, None, '___sec62'),
+              (' Phenomenology of nuclear forces: From Yukawa to Lattice QCD and Effective Field Theory ',
+               1,
+               None,
+               '___sec63'),
+              (' Phenomenology of nuclear forces: Charge Dependence ',
+               2,
+               None,
+               '___sec64'),
+              (' Symmetries of the Nucleon-Nucleon (NN) Force ',
+               1,
+               None,
+               '___sec65'),
+              (' Dramatis Personae ', 2, None, '___sec66'),
+              (' Components of the force and quantum numbers ',
+               2,
+               None,
+               '___sec67'),
+              (' Relative and CoM system, quantum numbers ',
+               2,
+               None,
+               '___sec68'),
+              (' Components of the force and quantum numbers ',
+               2,
+               None,
+               '___sec69'),
+              (' Phenomenology of one-pion exchange ', 2, None, '___sec70'),
+              (' Models for nuclear forces and derivation of non-relativistic expressions ',
+               1,
+               None,
+               '___sec71'),
+              (' The Lippman-Schwinger equation for two-nucleon scattering ',
+               1,
+               None,
+               '___sec72'),
+              (' Exercise 22: Find all possible two-body quantum numbers ',
+               2,
+               None,
+               '___sec73'),
+              (' Exercise 23: Expressions for the various operators ',
+               2,
+               None,
+               '___sec74'),
+              (' Exercise 24: One-pion exchange ', 2, None, '___sec75'),
+              (' Configuration interaction theory ', 0, 'ch:fci', 'ch:fci'),
+              (' Introduction ', 1, None, '___sec77'),
+              (' Full Configuration Interaction Theory ',
+               1,
+               None,
+               '___sec78'),
+              (' Full Configuration Interaction Theory ',
+               2,
+               None,
+               '___sec79'),
+              (' Building a many-body basis ', 1, None, '___sec80'),
+              (' Basic steps in a building an FCI code ',
+               2,
+               None,
+               '___sec81'),
+              (' Example case: pairing Hamiltonian ', 2, None, '___sec82'),
+              (' Angular momentum algebra, Wigner-Eckart theorem ',
+               2,
+               None,
+               '___sec83'),
+              (' Many-body perturbation theory ', 0, 'ch:mbpt', 'ch:mbpt'),
+              (' Many-body perturbation theory ', 1, None, '___sec85'),
+              (' Coupled cluster theory ', 0, 'ch:cc', 'ch:cc'),
+              ('  Introduction ', 1, None, '___sec87'),
+              (' Creation and Annihilation operators ', 1, None, '___sec88'),
+              (' CCSD Wavefunction ', 1, None, '___sec89'),
+              (' Derivation of Equations ', 1, None, '___sec90'),
+              (' Baker-Campbell-Hausdorff formula ', 2, None, '___sec91'),
+              (' Normal Order and Contractions ', 2, None, '___sec92'),
+              (" Wick's Theorem ", 2, None, '___sec93'),
+              (' Fermi Vacuum and Particle Holes ', 2, None, '___sec94'),
+              (' Normal Ordered $\\mathbf{H}$ ', 2, None, '___sec95'),
+              (' CCSD Hamiltonian ', 2, None, '___sec96'),
+              (' CCSD Energy ', 2, None, '___sec97'),
+              (' $t_i^a$ amplitudes ', 2, None, '___sec98'),
+              (' $t_{ij}^{ab}$ amplitudes ', 2, None, '___sec99'),
+              (' Introducing denominators ', 1, None, '___sec100'),
+              (' $t_i^a$ ', 2, None, '___sec101'),
+              (' $t_{ij}^{ab}$ ', 2, None, '___sec102'),
+              (' Initial guess ', 2, None, '___sec103'),
+              (' CCSD factorization ', 1, None, '___sec104'),
+              (' Constructing an algorithm ', 1, None, '___sec105'),
+              (' Inserting denominators ', 2, None, '___sec106'),
+              (' $[W_1]$ ', 2, None, '___sec107'),
+              (' $[W_2]$ ', 2, None, '___sec108'),
+              (' $[W_3]$ ', 2, None, '___sec109'),
+              (' $[F_1]$ ', 2, None, '___sec110'),
+              (' $[F_2]$ ', 2, None, '___sec111'),
+              (' $[F_3]$ ', 2, None, '___sec112'),
+              (' $[W_4]$ ', 2, None, '___sec113'),
+              (' Inserting intermediates ', 2, None, '___sec114'),
+              (' Inserting into $t_i^a$ ', 2, None, '___sec115'),
+              (' Description of algorithm ', 2, None, '___sec116'),
+              (' Scaling ', 2, None, '___sec117'),
+              (' CCSDT equations ', 1, None, '___sec118'),
+              (' CCSDT-1a ', 2, None, '___sec119'),
+              (' CCSDT-1b ', 2, None, '___sec120'),
+              (' CCSDT-2 ', 2, None, '___sec121'),
+              (' CCSDT-3 ', 2, None, '___sec122'),
+              (' CCSDT-4 ', 2, None, '___sec123'),
+              (' Full CCSDT ', 2, None, '___sec124'),
+              (' Similarity Transformation Group methods ',
+               0,
+               'ch:srg',
+               'ch:srg'),
+              (' Introduction ', 1, None, '___sec126'),
+              (' Monte Carlo Methods ', 0, 'ch:mc', 'ch:mc'),
+              (' Variational Monte Carlo methods ', 1, None, '___sec128'),
+              ('  The c++ code with a VMC Solver class, main program first ',
+               2,
+               None,
+               '___sec129'),
+              (' The Metropolis algorithm ', 1, None, '___sec130'),
+              (' Why blocking? ', 1, None, '___sec131'),
+              (' Time Auto-correlation Function ', 2, None, '___sec132'),
+              (' Importance sampling ', 2, None, '___sec133'),
+              (' Importance sampling, program elements ',
+               2,
+               None,
+               '___sec134'),
+              (' Importance sampling, program elements ',
+               2,
+               None,
+               '___sec135'),
+              (' Importance sampling, program elements ',
+               2,
+               None,
+               '___sec136'),
+              (' Importance sampling, program elements ',
+               2,
+               None,
+               '___sec137'),
+              (' Importance sampling, program elements ',
+               2,
+               None,
+               '___sec138'),
+              (' Importance sampling, program elements ',
+               2,
+               None,
+               '___sec139'),
+              (' Efficient calculation of Slater determinants ',
+               1,
+               None,
+               '___sec140'),
+              (' Infinite matter ', 0, 'ch:infmatter', 'ch:infmatter'),
+              (' Introduction to studies of infinite matter ',
+               1,
+               None,
+               '___sec142'),
+              (' The infinite electron gas ', 2, None, '___sec143'),
+              (' The infinite electron gas as a homogenous system ',
+               2,
+               None,
+               '___sec144'),
+              (' Periodic boundary conditions ', 2, None, '___sec145'),
+              (' Defining the Hamiltonian operator ', 2, None, '___sec146'),
+              (' Single-particle Hartree-Fock energy ', 2, None, '___sec147'),
+              (' Exercise 25: Hartree-Fock single-particle solution for the electron gas ',
+               2,
+               None,
+               '___sec148'),
+              (' Exercise 26: Hartree-Fock ground state energy for the  electron gas in three dimensions ',
+               2,
+               None,
+               '___sec149'),
+              (' Preparing the ground for numerical calculations; kinetic energy and Ewald term ',
+               2,
+               None,
+               '___sec150'),
+              (' Ewald correction term ', 2, None, '___sec151'),
+              (' Interaction in momentum space  ', 2, None, '___sec152'),
+              (' Antisymmetrized matrix elements in three dimensions ',
+               2,
+               None,
+               '___sec153'),
+              (' Fock operator ', 2, None, '___sec154'),
+              (' Periodic boundary conditions and single-particle states ',
+               2,
+               None,
+               '___sec155'),
+              (' Magic number for the two-dimensional electron gas ',
+               2,
+               None,
+               '___sec156'),
+              (' Hartree-Fock energies ', 2, None, '___sec157'),
+              (' Decays ', 0, 'ch:decay', 'ch:decay'),
+              (' Electromagnetic multipole moments and transitions ',
+               1,
+               None,
+               '___sec159'),
+              (' $\\beta$-decay ', 1, None, '___sec160'),
+              (' References ', 1, None, '___sec161')]}
+end of tocinfo -->
+
+<body>
+
+
+
+<script type="text/x-mathjax-config">
+MathJax.Hub.Config({
+  TeX: {
+     equationNumbers: {  autoNumber: "none"  },
+     extensions: ["AMSmath.js", "AMSsymbols.js", "autobold.js", "color.js"]
+  }
+});
+</script>
+<script type="text/javascript"
+ src="http://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML">
+</script>
+
+
+
+    
+<!-- Bootstrap navigation bar -->
+<div class="navbar navbar-default navbar-fixed-top">
+  <div class="navbar-header">
+    <button type="button" class="navbar-toggle" data-toggle="collapse" data-target=".navbar-responsive-collapse">
+      <span class="icon-bar"></span>
+      <span class="icon-bar"></span>
+      <span class="icon-bar"></span>
+    </button>
+    <a class="navbar-brand" href="book.html">Nuclear Many-body Physics; a Computational Approach</a>
+  </div>
+  <div class="navbar-collapse collapse navbar-responsive-collapse">
+    <ul class="nav navbar-nav navbar-right">
+      <li class="dropdown">
+        <a href="#" class="dropdown-toggle" data-toggle="dropdown">Contents <b class="caret"></b></a>
+        <ul class="dropdown-menu">
+     <!-- navigation toc: --> <li><a href="._book001.html#ch:preface" style="font-size: 80%;">Preface</a></li>
+     <!-- navigation toc: --> <li><a href="._book002.html#ch:intro" style="font-size: 80%;">Introduction</a></li>
+     <!-- navigation toc: --> <li><a href="._book003.html#ch:spdata" style="font-size: 80%;">Experimental data and definitions of the many-body problem</a></li>
+     <!-- navigation toc: --> <li><a href="._book004.html#ch:meanfield" style="font-size: 80%;">Mean-field approaches</a></li>
+     <!-- navigation toc: --> <li><a href="._book005.html#ch:squant" style="font-size: 80%;">Second quantization</a></li>
+     <!-- navigation toc: --> <li><a href="._book006.html#ch:forces" style="font-size: 80%;">Nuclear forces</a></li>
+     <!-- navigation toc: --> <li><a href="._book007.html#ch:fci" style="font-size: 80%;">Configuration interaction theory</a></li>
+     <!-- navigation toc: --> <li><a href="._book008.html#ch:mbpt" style="font-size: 80%;">Many-body perturbation theory</a></li>
+     <!-- navigation toc: --> <li><a href="._book009.html#ch:cc" style="font-size: 80%;">Coupled cluster theory</a></li>
+     <!-- navigation toc: --> <li><a href="._book010.html#ch:srg" style="font-size: 80%;">Similarity Transformation Group methods</a></li>
+     <!-- navigation toc: --> <li><a href="._book011.html#ch:mc" style="font-size: 80%;">Monte Carlo Methods</a></li>
+     <!-- navigation toc: --> <li><a href="._book012.html#ch:infmatter" style="font-size: 80%;">Infinite matter</a></li>
+     <!-- navigation toc: --> <li><a href="._book013.html#ch:decay" style="font-size: 80%;">Decays</a></li>
+
+        </ul>
+      </li>
+    </ul>
+  </div>
+</div>
+</div> <!-- end of navigation bar -->
+
+<div class="container">
+
+<p>&nbsp;</p><p>&nbsp;</p><p>&nbsp;</p> <!-- add vertical space -->
+
+<a name="part0000"></a>
+<!-- ------------------- main content ---------------------- -->
+
+<!-- Note on the Springer T2 style: here we use the modifications -->
+<!-- introduced in t2do.sty and svmonodo.sty (both are bundled with DocOnce). -->
+
+<p>
+
+
+<div class="jumbotron">
+<center><h1>Nuclear Many-body Physics; a Computational Approach</h1></center>  <!-- document title -->
+
+<p>
+<!-- author(s): Morten Hjorth-Jensen, Michigan State University and University of Oslo, Norway -->
+
+<center>
+<b>Morten Hjorth-Jensen, Michigan State University and University of Oslo, Norway</b> 
+</center>
+
+<p>
+<!-- institution(s) -->
+<p>
+<center><h4>May 12, 2015</h4></center> <!-- date -->
+
+<h2>Table of contents</h2>
+
+<p>
+<a href="._book001.html#ch:preface"> Preface  </a><br>
+<a href="._book002.html#ch:intro"> Introduction </a><br>
+&nbsp; &nbsp; &nbsp; <a href="._book002.html#___sec2">Why a text on the nuclear many-body problem </a><br>
+&nbsp; &nbsp; &nbsp; <a href="._book002.html#___sec3"> How to use this text </a><br>
+&nbsp; &nbsp; &nbsp; <a href="._book002.html#___sec4"> Choice of programming languages and computational issues </a><br>
+<a href="._book003.html#ch:spdata"> Experimental data and definitions of the many-body problem </a><br>
+&nbsp; &nbsp; &nbsp; <a href="._book003.html#___sec6"> Introduction </a><br>
+&nbsp; &nbsp; &nbsp; <a href="._book003.html#___sec7"> Masses and Binding energies </a><br>
+&nbsp; &nbsp; &nbsp; <a href="._book003.html#___sec8"> \( Q \)-values and separation energies </a><br>
+&nbsp; &nbsp; &nbsp; <a href="._book003.html#___sec9"> Radii  </a><br>
+&nbsp; &nbsp; &nbsp; <a href="._book003.html#___sec10"> Definitions </a><br>
+&nbsp; &nbsp; &nbsp; <a href="._book003.html#___sec11"> A modified Hamiltonian  </a><br>
+&nbsp; &nbsp; &nbsp; <a href="._book003.html#___sec12"> Numerical solution of the single-particle Schroedinger equation </a><br>
+&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; <a href="._book003.html#___sec13"> Exercise 1: Masses and binding energies </a><br>
+&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; <a href="._book003.html#___sec14"> Exercise 2: Eigenvalues and eigenvectors for various single-particle potentials </a><br>
+&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; <a href="._book003.html#___sec15"> Exercise 3: Operators and Slater determinants </a><br>
+&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; <a href="._book003.html#___sec16"> Exercise 4: First simple shell-model calculation </a><br>
+<a href="._book004.html#ch:meanfield"> Mean-field approaches </a><br>
+&nbsp; &nbsp; &nbsp; <a href="._book004.html#___sec18"> Derivation of Hartree-Fock equations in coordinate space </a><br>
+&nbsp; &nbsp; &nbsp; <a href="._book004.html#___sec19"> Definitions and notations </a><br>
+&nbsp; &nbsp; &nbsp; <a href="._book004.html#___sec20"> Derivation of Hartree-Fock equations in coordinate space </a><br>
+&nbsp; &nbsp; &nbsp; <a href="._book004.html#___sec21"> Analysis of Hartree-Fock equations in coordinate space </a><br>
+&nbsp; &nbsp; &nbsp; <a href="._book004.html#___sec22"> Hartree-Fock by varying the coefficients of a wave function expansion </a><br>
+&nbsp; &nbsp; &nbsp; <a href="._book004.html#___sec23"> Hartree-Fock algorithm </a><br>
+&nbsp; &nbsp; &nbsp; <a href="._book004.html#___sec24"> Analysis of Hartree-Fock equations and Koopman's theorem </a><br>
+&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; <a href="._book004.html#___sec25"> Exercise 5: Derivation of Hartree-Fock equations </a><br>
+&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; <a href="._book004.html#___sec26"> Exercise 6: Derivation of Hartree-Fock equations </a><br>
+<a href="._book005.html#ch:squant"> Second quantization </a><br>
+&nbsp; &nbsp; &nbsp; <a href="._book005.html#___sec28"> Second quantization </a><br>
+&nbsp; &nbsp; &nbsp; <a href="._book005.html#___sec29"> One-body operators in second quantization </a><br>
+&nbsp; &nbsp; &nbsp; <a href="._book005.html#___sec30"> Two-body operators in second quantization </a><br>
+&nbsp; &nbsp; &nbsp; <a href="._book005.html#___sec31"> Particle-hole formalism </a><br>
+&nbsp; &nbsp; &nbsp; <a href="._book005.html#___sec32">  Summarizing and defining a normal-ordered Hamiltonian </a><br>
+&nbsp; &nbsp; &nbsp; <a href="._book005.html#___sec33"> Hartree-Fock in second quantization and stability of HF solution </a><br>
+&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; <a href="._book005.html#___sec34"> Thouless' theorem </a><br>
+&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; <a href="._book005.html#___sec35"> New operators </a><br>
+&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; <a href="._book005.html#___sec36"> Showing that \( |\tilde{c}\rangle= |c'\rangle \)  </a><br>
+&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; <a href="._book005.html#___sec37"> Hartree-Fock in second quantization and stability of HF solution </a><br>
+&nbsp; &nbsp; &nbsp; <a href="._book005.html#___sec38"> Operators in second quantization </a><br>
+&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; <a href="._book005.html#___sec39"> Exercise 7: Relation between basis functions </a><br>
+&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; <a href="._book005.html#___sec40"> Exercise 8: Matrix elements </a><br>
+&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; <a href="._book005.html#___sec41"> Exercise 9: Normal-ordered one-body operator </a><br>
+&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; <a href="._book005.html#___sec42"> Exercise 10: Normal-ordered two-body operator </a><br>
+&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; <a href="._book005.html#___sec43"> Exercise 11: Matrix elements using the Slater-Condon rule </a><br>
+&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; <a href="._book005.html#___sec44"> Exercise 12: Program to set up Slater determinants </a><br>
+&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; <a href="._book005.html#___sec45"> Exercise 13: Using sympy to compute matrix elements </a><br>
+&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; <a href="._book005.html#___sec46"> Exercise 14: Using sympy to compute matrix elements </a><br>
+&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; <a href="._book005.html#___sec47"> Exercise 15: Using sympy to compute matrix elements </a><br>
+&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; <a href="._book005.html#___sec48"> Exercise 16: Using sympy to compute matrix elements </a><br>
+&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; <a href="._book005.html#___sec49"> Exercise 17: Using sympy to compute matrix elements </a><br>
+&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; <a href="._book005.html#___sec50"> Exercise 18: Using sympy to compute matrix elements </a><br>
+&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; <a href="._book005.html#___sec51"> Exercise 19: Using sympy to compute matrix elements </a><br>
+&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; <a href="._book005.html#___sec52"> Exercise 20: Diagrammatic representation of Hartree-Fock equations </a><br>
+&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; <a href="._book005.html#___sec53"> Exercise 21: Derivation of Hartree-Fock equations </a><br>
+&nbsp; &nbsp; &nbsp; <a href="._book005.html#___sec54"> Wick's theorem </a><br>
+<a href="._book006.html#ch:forces"> Nuclear forces </a><br>
+&nbsp; &nbsp; &nbsp; <a href="._book006.html#___sec56"> Introduction </a><br>
+&nbsp; &nbsp; &nbsp; <a href="._book006.html#___sec57"> Single-particle and two-particle quantum numbers </a><br>
+&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; <a href="._book006.html#___sec58"> Clebsch-Gordan coefficients </a><br>
+&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; <a href="._book006.html#___sec59"> Quantum numbers and the Schroeodinger equation in relative and CM coordinates </a><br>
+&nbsp; &nbsp; &nbsp; <a href="._book006.html#___sec60"> Components of the force and isospin </a><br>
+&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; <a href="._book006.html#___sec61"> Isospin </a><br>
+&nbsp; &nbsp; &nbsp; <a href="._book006.html#___sec62"> Two-body matrix elements </a><br>
+&nbsp; &nbsp; &nbsp; <a href="._book006.html#___sec63"> Phenomenology of nuclear forces: From Yukawa to Lattice QCD and Effective Field Theory </a><br>
+&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; <a href="._book006.html#___sec64"> Phenomenology of nuclear forces: Charge Dependence </a><br>
+&nbsp; &nbsp; &nbsp; <a href="._book006.html#___sec65"> Symmetries of the Nucleon-Nucleon (NN) Force </a><br>
+&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; <a href="._book006.html#___sec66"> Dramatis Personae </a><br>
+&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; <a href="._book006.html#___sec67"> Components of the force and quantum numbers </a><br>
+&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; <a href="._book006.html#___sec68"> Relative and CoM system, quantum numbers </a><br>
+&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; <a href="._book006.html#___sec69"> Components of the force and quantum numbers </a><br>
+&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; <a href="._book006.html#___sec70"> Phenomenology of one-pion exchange </a><br>
+&nbsp; &nbsp; &nbsp; <a href="._book006.html#___sec71"> Models for nuclear forces and derivation of non-relativistic expressions </a><br>
+&nbsp; &nbsp; &nbsp; <a href="._book006.html#___sec72"> The Lippman-Schwinger equation for two-nucleon scattering </a><br>
+&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; <a href="._book006.html#___sec73"> Exercise 22: Find all possible two-body quantum numbers </a><br>
+&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; <a href="._book006.html#___sec74"> Exercise 23: Expressions for the various operators </a><br>
+&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; <a href="._book006.html#___sec75"> Exercise 24: One-pion exchange </a><br>
+<a href="._book007.html#ch:fci"> Configuration interaction theory </a><br>
+&nbsp; &nbsp; &nbsp; <a href="._book007.html#___sec77"> Introduction </a><br>
+&nbsp; &nbsp; &nbsp; <a href="._book007.html#___sec78"> Full Configuration Interaction Theory </a><br>
+&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; <a href="._book007.html#___sec79"> Full Configuration Interaction Theory </a><br>
+&nbsp; &nbsp; &nbsp; <a href="._book007.html#___sec80"> Building a many-body basis </a><br>
+&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; <a href="._book007.html#___sec81"> Basic steps in a building an FCI code </a><br>
+&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; <a href="._book007.html#___sec82"> Example case: pairing Hamiltonian </a><br>
+&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; <a href="._book007.html#___sec83"> Angular momentum algebra, Wigner-Eckart theorem </a><br>
+<a href="._book008.html#ch:mbpt"> Many-body perturbation theory </a><br>
+&nbsp; &nbsp; &nbsp; <a href="._book008.html#___sec85"> Many-body perturbation theory </a><br>
+<a href="._book009.html#ch:cc"> Coupled cluster theory </a><br>
+&nbsp; &nbsp; &nbsp; <a href="._book009.html#___sec87">  Introduction </a><br>
+&nbsp; &nbsp; &nbsp; <a href="._book009.html#___sec88"> Creation and Annihilation operators </a><br>
+&nbsp; &nbsp; &nbsp; <a href="._book009.html#___sec89"> CCSD Wavefunction </a><br>
+&nbsp; &nbsp; &nbsp; <a href="._book009.html#___sec90"> Derivation of Equations </a><br>
+&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; <a href="._book009.html#___sec91"> Baker-Campbell-Hausdorff formula </a><br>
+&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; <a href="._book009.html#___sec92"> Normal Order and Contractions </a><br>
+&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; <a href="._book009.html#___sec93"> Wick's Theorem </a><br>
+&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; <a href="._book009.html#___sec94"> Fermi Vacuum and Particle Holes </a><br>
+&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; <a href="._book009.html#___sec95"> Normal Ordered \( \mathbf{H} \) </a><br>
+&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; <a href="._book009.html#___sec96"> CCSD Hamiltonian </a><br>
+&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; <a href="._book009.html#___sec97"> CCSD Energy </a><br>
+&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; <a href="._book009.html#___sec98"> \( t_i^a \) amplitudes </a><br>
+&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; <a href="._book009.html#___sec99"> \( t_{ij}^{ab} \) amplitudes </a><br>
+&nbsp; &nbsp; &nbsp; <a href="._book009.html#___sec100"> Introducing denominators </a><br>
+&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; <a href="._book009.html#___sec101"> \( t_i^a \) </a><br>
+&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; <a href="._book009.html#___sec102"> \( t_{ij}^{ab} \) </a><br>
+&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; <a href="._book009.html#___sec103"> Initial guess </a><br>
+&nbsp; &nbsp; &nbsp; <a href="._book009.html#___sec104"> CCSD factorization </a><br>
+&nbsp; &nbsp; &nbsp; <a href="._book009.html#___sec105"> Constructing an algorithm </a><br>
+&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; <a href="._book009.html#___sec106"> Inserting denominators </a><br>
+&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; <a href="._book009.html#___sec107"> \( [W_1] \) </a><br>
+&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; <a href="._book009.html#___sec108"> \( [W_2] \) </a><br>
+&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; <a href="._book009.html#___sec109"> \( [W_3] \) </a><br>
+&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; <a href="._book009.html#___sec110"> \( [F_1] \) </a><br>
+&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; <a href="._book009.html#___sec111"> \( [F_2] \) </a><br>
+&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; <a href="._book009.html#___sec112"> \( [F_3] \) </a><br>
+&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; <a href="._book009.html#___sec113"> \( [W_4] \) </a><br>
+&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; <a href="._book009.html#___sec114"> Inserting intermediates </a><br>
+&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; <a href="._book009.html#___sec115"> Inserting into \( t_i^a \) </a><br>
+&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; <a href="._book009.html#___sec116"> Description of algorithm </a><br>
+&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; <a href="._book009.html#___sec117"> Scaling </a><br>
+&nbsp; &nbsp; &nbsp; <a href="._book009.html#___sec118"> CCSDT equations </a><br>
+&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; <a href="._book009.html#___sec119"> CCSDT-1a </a><br>
+&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; <a href="._book009.html#___sec120"> CCSDT-1b </a><br>
+&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; <a href="._book009.html#___sec121"> CCSDT-2 </a><br>
+&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; <a href="._book009.html#___sec122"> CCSDT-3 </a><br>
+&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; <a href="._book009.html#___sec123"> CCSDT-4 </a><br>
+&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; <a href="._book009.html#___sec124"> Full CCSDT </a><br>
+<a href="._book010.html#ch:srg"> Similarity Transformation Group methods </a><br>
+&nbsp; &nbsp; &nbsp; <a href="._book010.html#___sec126"> Introduction </a><br>
+<a href="._book011.html#ch:mc"> Monte Carlo Methods </a><br>
+&nbsp; &nbsp; &nbsp; <a href="._book011.html#___sec128"> Variational Monte Carlo methods </a><br>
+&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; <a href="._book011.html#___sec129">  The c++ code with a VMC Solver class, main program first </a><br>
+&nbsp; &nbsp; &nbsp; <a href="._book011.html#___sec130"> The Metropolis algorithm </a><br>
+&nbsp; &nbsp; &nbsp; <a href="._book011.html#___sec131"> Why blocking? </a><br>
+&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; <a href="._book011.html#___sec132"> Time Auto-correlation Function </a><br>
+&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; <a href="._book011.html#___sec133"> Importance sampling </a><br>
+&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; <a href="._book011.html#___sec134"> Importance sampling, program elements </a><br>
+&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; <a href="._book011.html#___sec135"> Importance sampling, program elements </a><br>
+&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; <a href="._book011.html#___sec136"> Importance sampling, program elements </a><br>
+&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; <a href="._book011.html#___sec137"> Importance sampling, program elements </a><br>
+&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; <a href="._book011.html#___sec138"> Importance sampling, program elements </a><br>
+&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; <a href="._book011.html#___sec139"> Importance sampling, program elements </a><br>
+&nbsp; &nbsp; &nbsp; <a href="._book011.html#___sec140"> Efficient calculation of Slater determinants </a><br>
+<a href="._book012.html#ch:infmatter"> Infinite matter </a><br>
+&nbsp; &nbsp; &nbsp; <a href="._book012.html#___sec142"> Introduction to studies of infinite matter </a><br>
+&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; <a href="._book012.html#___sec143"> The infinite electron gas </a><br>
+&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; <a href="._book012.html#___sec144"> The infinite electron gas as a homogenous system </a><br>
+&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; <a href="._book012.html#___sec145"> Periodic boundary conditions </a><br>
+&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; <a href="._book012.html#___sec146"> Defining the Hamiltonian operator </a><br>
+&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; <a href="._book012.html#___sec147"> Single-particle Hartree-Fock energy </a><br>
+&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; <a href="._book012.html#___sec148"> Exercise 25: Hartree-Fock single-particle solution for the electron gas </a><br>
+&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; <a href="._book012.html#___sec149"> Exercise 26: Hartree-Fock ground state energy for the  electron gas in three dimensions </a><br>
+&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; <a href="._book012.html#___sec150"> Preparing the ground for numerical calculations; kinetic energy and Ewald term </a><br>
+&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; <a href="._book012.html#___sec151"> Ewald correction term </a><br>
+&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; <a href="._book012.html#___sec152"> Interaction in momentum space  </a><br>
+&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; <a href="._book012.html#___sec153"> Antisymmetrized matrix elements in three dimensions </a><br>
+&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; <a href="._book012.html#___sec154"> Fock operator </a><br>
+&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; <a href="._book012.html#___sec155"> Periodic boundary conditions and single-particle states </a><br>
+&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; <a href="._book012.html#___sec156"> Magic number for the two-dimensional electron gas </a><br>
+&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; <a href="._book012.html#___sec157"> Hartree-Fock energies </a><br>
+<a href="._book013.html#ch:decay"> Decays </a><br>
+&nbsp; &nbsp; &nbsp; <a href="._book013.html#___sec159"> Electromagnetic multipole moments and transitions </a><br>
+&nbsp; &nbsp; &nbsp; <a href="._book013.html#___sec160"> \( \beta \)-decay </a><br>
+&nbsp; &nbsp; &nbsp; <a href="._book014.html#___sec161"> References </a><br>
+</p>
+<p>
+
+
+<p><a href="._book001.html" class="btn btn-primary btn-lg">Read &raquo;</a></p>
+
+
+</div> <!-- end jumbotron -->
+
+<p>
+<!-- navigation buttons at the bottom of the page -->
+<ul class="pagination">
+  <li class="active"><a href="._book000.html">1</a></li>
+  <li><a href="._book001.html">2</a></li>
+  <li><a href="._book002.html">3</a></li>
+  <li><a href="._book003.html">4</a></li>
+  <li><a href="._book004.html">5</a></li>
+  <li><a href="._book005.html">6</a></li>
+  <li><a href="._book006.html">7</a></li>
+  <li><a href="._book007.html">8</a></li>
+  <li><a href="._book008.html">9</a></li>
+  <li><a href="._book009.html">10</a></li>
+  <li><a href="">...</a></li>
+  <li><a href="._book014.html">15</a></li>
+  <li><a href="._book001.html">&raquo;</a></li>
+</ul>
+<!-- ------------------- end of main content --------------- -->
+
+</div>  <!-- end container -->
+<!-- include javascript, jQuery *first* -->
+<script src="http://ajax.googleapis.com/ajax/libs/jquery/1.10.2/jquery.min.js"></script>
+<script src="http://netdna.bootstrapcdn.com/bootstrap/3.0.0/js/bootstrap.min.js"></script>
+
+<!-- Bootstrap footer
+<footer>
+<a href="http://..."><img width="250" align=right src="http://..."></a>
+</footer>
+-->
+
+
+</body>
+</html>
+    
+

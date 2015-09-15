@@ -1,0 +1,1486 @@
+\chapter{Comments Prior to Implementation}
+ 
+\begin{quotation}
+If God has made the world a perfect mechanism, he has at least
+conceded so much to our imperfect intellect that in order to predict
+little parts of it, we need not solve innumerable differential
+equations, but can use dice with fair success.  
+{\em Max Born, quoted  in H.~R.~Pagels, The Cosmic Code \cite{pagels1982}}
+\end{quotation}
+
+\abstract{This chapter aims at giving an overview on some of the most
+  used methods to solve ordinary differential equations. Several
+  examples of applications to physical systems are discussed, from the
+  classical pendulum to the physics of Neutron stars.}
+
+
+In this chapter we discuss a few external libraries used in the implementation and how they work. Also we will discuss a few guiding principles we will apply to our implementation later. We will mainly discuss armadillo, MPI and general parallel programming. We will also mention OpenMP and external math libraries. The external math library we will use is Intel MKL.
+
+\section{Armadillo}
+Armadillo is a C++ linear algebra library. The library is designed to be similar to matlab in syntax. It provides good speed relative to other libraries and makes it easy to utilize matrix or vector multiplications in an efficient way. The armadillo documentation is available in Ref.\cite{armadillo-ref1}. Armadillo is also available for other programming languages, but we will strictly focus on the C++ version.
+
+\subsection{Armadillo Types}
+Armadillo has its own objects. We will use four objects in armadillo. The first three are vector, matrix and cube. These are simply put one, two and three dimensional arrays defined by standard to contain numerical values of double precision. The last is field. A field in armadillo is a two dimensional array that can contain other things than numerical values. A field can contain things like strings, vectors, matrices or cubes. Anything that can be used in combination with the "=" operator and a copy, like memcpy(). A field can be defined like this:
+
+\begin{equation}
+field<mat> A \nonumber
+\end{equation}
+This defines a two dimensional field of matrices, meaning a four dimensional array. The field is called "A". This can be accessed by first two indexes for the field and next two indexes for the matrix. A(0,1) for example is the matrix with indexes 0 and 1 in the field. A(0,1)(2,3) is a double precision number with indexes 2,3 in the matrix located in indexes 0,1 in the field A.
+
+\subsection{Matrix Operations}
+Matrix multiplication can be utilized very easy in armadillo. If there are three matrices defined, A, B and C, we can easily call on matrix multiplication by stating:
+
+\begin{lstlisting}
+C = A * B 
+\end{lstlisting}
+Other operations available are additions, subtractions, element wise multiplications and element wise divisions. These are accessed in order like this:
+
+\begin{lstlisting}
+C = A + B;
+C = A - B;
+C = A % B;
+C = A / B;
+\end{lstlisting}
+Also there is a function called accu(C). This is an accumulation function that accumulates the values of C, where C can be a vector, matrix or a cube. If used in combination we can define
+
+\begin{lstlisting}
+D = accu(A % B)
+\end{lstlisting}
+This leaves D as a double precision number. Here A and B are first element wise multiplied and the resulting matrix accumulated. A and B must be same size. This will be used in our implementation. Take for example the term
+
+\begin{equation}
+D_{ij}^{ab} t_{ij}^{ab} \leftarrow \sum_{cd} I_{ab}^{cd} \tau_{ij}^{cd} . \label{armadilloterm}
+\end{equation}
+
+If we store I as a field with indexing I(a,b)(c,d) and $\tau_{ij}^{cd}$ is stored as a field with indexing $\tau$(i,j)(c,d) then we can use element wise multiplication and accumulation to calculate Eq. \eqref{armadilloterm}.
+
+\begin{equation}
+\sum_{cd} I_{ab}^{cd} \tau_{ij}^{cd}
+= accu(I(a,b) \% \tau(i,j)) .
+\end{equation}
+Here I(a,b) is a matrix and $\tau$(i,j) is a matrix of same size. A major positive of armadillo is that it is possible to link other effective external math libraries to perform the actual matrix operations. We can link BLAS, LAPACK, OpenBLAS and many others. Armadillo initiates calls to these libraries automatic and effectively if installed properly. We then get the effectiveness of the best external math libraries, and the simplicity of the armadillo syntax.
+
+\subsection{Element access}
+An interesting feature when using armadillo is the way we access elements. In C syntax one usually allocates an array using malloc(). This gives great control over memory accessing, as we can have even multidimensional arrays sequential in memory. \\
+
+In armadillo we usually allocate a matrix with just mat A. We can have a field of matrices with field<mat>. However each element in the field must be allocated on its own. Also armadillo has a few checks in place to ensure a bug free working code. Based on performance and experience, this is not efficient. \\
+
+Other types in armadillo such at mat or vector is quite efficient. However when using this library it is important to be aware that not all types in armadillo are as efficient when it comes to memory access. Usually it is best to stick with one or two dimensional arrays as much as possible, even make temporary vectors or matrices to avoid accessing a field to much. Trial and error is thus a good tool if we want to use armadillo for high performance computing. This comment applies to armadillo at the time of this thesis. The armadillo developers are continuously working to improve the performance. \\
+
+Another problem we encountered in our implementation is that OpenMPI does not take armadillo types in its communication functions. Armadillo does have functions that can help modestly in this regard, like the function .memptr(). However, we found it was not an optimal combination.
+
+\section{Parallel Computing and OpenMPI}
+The Open Source Message Passing Interface, OpenMPI, will be used in our implementation, Ref.\cite{openmpi_cite}. OpenMPI is a library that makes parallel computing much easier. It removed the need for low level parallel programming. In this section we will discuss briefly why we need parallel computing and what it is.
+
+\subsection{The CPU \label{the_cpu_section}}
+The CPU, or the Central Processing Unit, is the brain of the computer. This unit processes instructions, many of which requires transfer from or to the memory on a computer. \\
+
+The CPU integrates many components, such as registres, FPUs and caches. The CPU has a "clock" that synchronizes the logic units within the CPU each clock cycle to precess instructions. Among other things this clock allows us to accurately measure the time used from one section of the program to another. \\
+
+Instructions are put in a pipeline for the CPU to execute. While the CPU is processing instructions, it also looks down the pipeline, to see what instructions it will need to perform soon and what values it will need. These values can then pre-emptively placed in the cache. In the cache they are faster to access when they are needed. \\
+
+If the CPU makes a wrong guess on for example an if test, the pipeline is filled with instructions that should not be processed and must be flushed. This slows down performance. \\
+
+A supercomputer consists of nodes. Each node has a number of CPUs. On the abel super computing cluster, each node has 16 CPUs. 
+
+\subsection{The Compiler}
+The compiler allows the CPU to understand easy syntax such as C++. The compiler takes the code as input and produce the .o file. In the .o file there are instructions for the CPU to process. The CPU only understands the .o file, as such we must always compile our code. The compiler also creates the pipeline. We want the pipeline to be as optimal as possible, for this reason we need a good compiler. \\
+
+A normal compiler performs a three step procedure. Step one is to check the code for syntax errors, include problems and other basics. \\
+
+Step two is to translate the code into an intermediate language. Here optimizations are performed. If we wrote a code segment like this
+
+\begin{lstlisting}
+double A, B, C;
+A = 50;
+B = 20;
+C = B * B * B;
+
+// More calculations
+
+B *= A;
+\end{lstlisting}
+
+The compiler will take note that the variable A is defined early on, and used much later. A is defined, stored into memory, then read from memory and finally it takes part in calculations. The compiler can rearrange our code to optimize this segment. 
+
+\begin{lstlisting}
+double B, C;
+B = 20;
+C = B * B * B;
+
+// More calculations
+
+double A = 50;
+B *= A;
+\end{lstlisting}
+
+Here the variable A is defined and used directly. It is defined were we need it and ready in the pipeline for calculations. If the pipeline for some reason is filled with wrong instructions, we will not take advantage of optimizations such as this. \\
+
+Step three is to output the .o file. Compilers are extremely complex, we should mention this was a brief and simplified description. 
+
+\subsection{Data}
+Data is stored in memory as a sequence of 0s and 1s. One 0 or 1 occupies one bit. 8 bits is one byte. The memory is read as bytes. Even a bool which can either be true or false is one byte. A bool of value true is stored in memory as 00000001. \\
+
+Other types of data have different sizes in memory. An int is 4 bytes, a float 4 bytes and a double 8 bytes. Data is usually stored in memory, or rapid access memory, RAM. Here we can access it faster than from disk. \\
+
+On a supercomputer, each node has a fixed number of memory available. The CPUs on the node can share this memory, or we can distribute it into smaller chunks were each CPU has its own unshared memory. 
+
+\subsection{Bandwidth}
+The bandwidth is a measure of number of bytes transferred per second. The bandwidth is a feature of the hardware, we will look at it as a constant value. We will be dealing with software. \\
+
+If we want to send an array of 100 doubles from one computer to another, this will be 800 bytes. If we sent it as floats, it would be 400 bytes. If we assume the bandwidth is same, it would be twice as fast to transfer floats than doubles. \\
+
+However, we will always use double precision values. But also in situations where we can reduce the size of the array, if it for example is symmetric. If we reduce the size by half, to 50 doubles or 400 bytes, we have saved much time in communication. \\
+
+The communication inside a node is quite fast on a supercomputer. However when we need to use multiple nodes at once there are challenges. The nodes are not at the same physical distance to each other, this means we can not achieve the same bandwidth between different nodes. Abel supercomputer has nodes stacked in a rack. The nodes inside the same rack are closer. The bandwidth is usually higher in communication inside a rack, relative to communication between nodes in different racks. 
+
+\subsection{Designing Parallel Algorithms}
+When we design a parallel algorithm we look for hotspots. These are computation intense areas, and a parallel implementation should be designed to work good around this area. \\
+
+However we must be careful, as communication can sometimes overtake computation. This can happen even in computation intense areas. A measure known as Granularity is known as the ratio of computation versus communication.
+
+\subsection{Performance}
+A serial algorithm is evaluated by its runtime. The runtime of a parallel program depends on input size , number of processors and the communication. This is a multidimensional problem, and not so easy to measure. \\
+
+Sometimes we can use two different algorithms to solve the same problem. One algorithm may be more efficient in serial, while the other is more efficient in parallel. \\
+
+To measure how good performance our parallel algorithm gives, it must be measured against the best serial algorithm for the given problem. This is true even if the best serial algorithm is in no way close to the same as the parallel algorithm. \\
+
+One could imagine a serial program that solves a problem in 10 seconds, but is impossible to run in parallel. And we can imagine another algorithm that solves it in 100 seconds, but runs easily in parallel. If we run the second algorithm with 5 CPUs, and say this takes 20 seconds. It would still be better to use the first serial algorithm. The parallel performance can only be described as not good. This is true until you can run the second algorithm in less time than 10 seconds. \\
+
+A good model of performance we will use is the Speedup, S.
+
+\begin{equation}
+S(p) = \frac{T_0}{T_p} .
+\end{equation}
+With ideal performance $S(p)$ is linear, preferably $S(p) = p$. As we noted in section \ref{the_cpu_section} values needed for calculation are pre-emptively placed in the catche. If a CPU cannot fit all values needed for calculations in the catche, the CPU must get these values from main memory. This slows down performance considerably. \\
+
+We consider a large array we want to use in calculations. It is twice as large as the catche. If we introduce two CPUs, we can split the array in two and fit it in the catche. We will then avoid the performance loss from memory accessing. This creates the possibility of super linear scaling. This is a situation where we double the number of CPUs, and get more than a doubling in performance. Figure \ref{super_linear_scaling} is an illustration of different types of scaling.
+
+\begin{figure}[ht!]
+\centering
+\includegraphics[width=90mm]{scaling_plots_examples_1000.eps}
+\caption{Illustration of possible scaling plots. Linear, Super linear and non linear is plotted.}
+\label{super_linear_scaling}
+\end{figure}
+
+\subsection{Overhead}
+If we try to solve a problem using two processor, it will normally not be twice as fast as it would be on one processor. This is because of overhead. Overhead are things like wasted computations, communication and latency. \\
+
+Wasted computation would be additional computations required for running the algorithm in parallel. Latency is the time interval required to initiate a communication, and also to tell the processors that the communication is completed. \\
+
+Runtime in a serial program is often denoted as $T_S$. The time from the first processor to start, until the last processor exits, is often noted a parallel runtime, $T_P$. The overhead, $T_O$, can then be described as
+
+\begin{equation}
+T_O = p T_P - T_S ,
+\end{equation}
+where p is the number of processors. Overhead is commonly increased as we increase the number of processors.
+
+\subsection{General Parallel Guidelines}
+For this implementation we will use a few simple guidelines with MPI. First we want to minimize the number of initiated communications. This is to reduce latency. When a communication is initiated, processors are syncronized. This means all processors enter into an MPI function at the same time. If one CPU is faster than another, this CPU will have to be idle and wait for the others to reach the communication function. This is undesireable. Also when exiting a communication, CPUs does not exit at the same time. This is another reason for minimizing the number of synchronizations. \\
+
+Second we want to minimize the number of bytes to be communicated, mainly through symmetries. We want to design our algorithm specifically for this purpose. Third we want to use OpenMPI, which has optimized functions for communication implemented. In Appendix A we list many of these functions, with a short description of what they do.
+
+\subsection{Optimizing Communication}
+
+We will not go in detail on how the MPI functions are optimized. A good book on the subject is Ref. \cite{mpi_boka_cite_referanse}. We will only entertain a small example. \\
+
+\begin{figure}[ht!]
+\centering
+\includegraphics[width=90mm]{mpi_communication.jpg}
+\caption{Illustration of two scenarios. Scenario one is a naive implementation of a broadcast. Scenario two is one example on how performance can be improved.}
+\label{mpi_communication_illustration_thingy}
+\end{figure}
+
+This example is illustrated in figure \ref{mpi_communication_illustration_thingy}. Say we have four processors. We want to broadcast a message from processor 1 to all the others. We distinguish the first processor by its rank, it is rank 1. If rank 1 sends its message to rank 2, then rank 3 and then rank 4, there must be three communications performed by rank 1. One communication must wait for the other to finish in this example. \\
+
+However, if rank 1 sends its message to rank 2. And then rank 1 sends to rank 3 at the same time as rank 2 sends to rank 4, there has only been two individual communication procedures by rank 1. This gives a better performance. \\
+
+Each vertical line in figure \ref{mpi_communication_illustration_thingy} represents one send and recieve with MPI. A MPI\_Send and MPI\_Recieve scales as
+
+\begin{equation}
+t = t_s + m t_b .
+\end{equation}
+Here $t_s$ is the startup time, $t_b$ is the bandwidth and m is the number of bytes. In scenario one we would be performing (P-1) such send/recieves, where P is the number of MPI procs.
+
+\begin{equation}
+T_1 = (P-1) \times (t_s + m t_b) .
+\end{equation}
+In scenario two we still perform send/recieves, but since they can now be done simontaniously the number of send/recieves scales as $\lceil log_2(P) \rceil$.
+
+\begin{equation}
+T_2 = \lceil log_2(P) \rceil \times (t_s + m t_b) .
+\end{equation}
+
+Ideally we do not want the number of sends/recieves performed by one CPU to increase at all when we increase the number of processors. \\
+
+\newpage
+
+\begin{figure}[ht!]
+\centering
+\includegraphics[width=90mm]{timeconsumption_scenario_one_vs_two.eps}
+\caption{Illustration of communication in the two scenarios. Plotted are the number of send/recieves that must be performed.}
+\label{mpi_communication_illustration_thingy2}
+\end{figure}
+
+We also perform performance tests of the actual performance on abel of the OpenMPI broadcast function. Results are presented in figure \ref{mpi_communication_real}. We notice there are indeed optimizations present from the non linear scaling. 
+
+\begin{figure}[ht!]
+\centering
+\includegraphics[width=90mm]{mpi_bcast_scaling.eps}
+\caption{Illustration of actual communication with different number of CPUs. Time is measured for 100 Broadcasts with $8 \times 70^4$ bytes.}
+\label{mpi_communication_real}
+\end{figure}
+
+\subsection{Optimizing Work Distribution \label{work_dist_section_1341}}
+Also in parallel programming it is important that all processors get assigned the same workload. We think of the workload as a series of jobs that can be executed in parallel. \\
+
+First we must define what is one job and second we must distribute these jobs among processors. Imagine running the following calculation in parallel.
+
+\begin{equation}
+K = \sum_{ijkl}^N X_{ij} Y_{kl} Z_{lk} .
+\end{equation}
+We first factorize it.
+
+\begin{equation}
+Z = \sum_{ij}^N X_{ij} \times \sum_{kl}^N Y_{kl} Z_{lk} .
+\end{equation}
+We will look at two possible definitions of one job in this scenario. First, we define a job by its job ID. This job ID can for example be expressed as a function of i and j. For example
+
+\begin{equation}
+job\_ID = i + j . \label{example_job_distribution}
+\end{equation}
+If we choose this definition we have $N \times N$ jobs to distribute. Alternatively we can define a job ID as a function of i, j, k and l. For example
+
+\begin{equation}
+job\_ID = i + j + k + l .
+\end{equation}
+We would then have $N^4$ jobs to distribute. If we have $N^4$ jobs, we can  use $N^4$ CPUs at max. If we however chose to prior job definition, we could only use $N^2$ CPUs. In general we want to have as many jobs as possible to distribute, but sometimes this can lead to additional communication. \\
+
+Another important feature is to optimize the job distribution. If we chose one job\_ID to be expressed by i and j, we can visualize the job\_ID in a matrix. Each column is a different index i, and each row is an index j. The matrix elements are the job\_IDs. If we use N = 4 and Eq. \eqref{example_job_distribution} we would get
+
+\begin{center}
+\begin{tikzpicture}
+
+        \matrix [matrix of math nodes,left delimiter=(,right delimiter=)] (m)
+        {
+            0 & 1 & 2 & 3 \\
+            1 & 2 & 3 & 4 \\
+            2 & 3 & 4 & 5 \\
+            3 & 4 & 5 & 6 \\
+        };  
+    \end{tikzpicture}
+\end{center}
+We want all jobs to have a different ID. We redefine the job\_ID to be
+
+\begin{equation}
+job\_ID = i \times N + j .
+\end{equation}
+Using this definition our matrix of job\_IDs becomes
+
+\begin{center}
+\begin{tikzpicture}
+
+        \matrix [matrix of math nodes,left delimiter=(,right delimiter=)] (m)
+        {
+            0 & 1 & 2 & 3 \\
+            4 & 5 & 6 & 7 \\
+            8 & 9 & 10 & 11 \\
+            12 & 13 & 14 & 15 \\
+        };  
+    \end{tikzpicture}
+\end{center}
+Each matrix element represent a job\_ID. Here each job has got its unique ID, and it is easier to distribute. When we distribute work we must use the MPI rank and total number of MPI procs, p. For example we can define a condition for each processor that must be true if the processor are to perform the job.
+
+\begin{lstlisting}
+if (job_ID % p = rank){
+   // Perform job
+}
+\end{lstlisting}
+From the perspective of our CPUs we can use this relation to identify our job distribution. Noted now in the matrix is what processor performs which job. We assume we have p = 8.
+
+\begin{center}
+\begin{tikzpicture}
+
+        \matrix [matrix of math nodes,left delimiter=(,right delimiter=)] (m)
+        {
+            0 & 1 & 2 & 3 \\
+            4 & 5 & 6 & 7 \\
+            0 & 1 & 2 & 3 \\
+            4 & 5 & 6 & 7 \\
+        };  
+    \end{tikzpicture}
+\end{center}
+We see the job distribution is optimal, because the amount of work for all CPUs are identical. If we used the job\_ID defined in Eq. \eqref{example_job_distribution} the amount of work for each processor would not be the same. This is a sub-optimal work distribution. 
+
+\subsection{Why Parallel}
+Constructing a parallel program seems like quite the challenging feature. Every year there are new processors released with improved performance. Why do we not just wait for a great CPU that can solve all our problems? The reason we do not wait for this, is that it will never happen. The problem with great performance CPUs is that their power consumption is generally very high. A CPU with twice the performance generally needs 3 or 4 times the power, according to a lecture from Intel on parallel programming, Ref.\cite{intelduden_citeation}. It is therefore much more feasable to have several CPUs with less performance, than one high performance CPU. \\
+
+So not only does parallel programming enable us to perform calculations faster and on larger systems, it also requires less power. Power consumption is the limiting factor in CPU performance today. Parallel programming is thus very important, and likely to become even more important in the future. On a sidenote, this is a reason why GPUs have become so popular in scientific programming, GPUs are optimized for performance per watt. Christoffer Hirth wrote extensively about this in his thesis, Ref.\cite{non_refer_numba1}. His principles has not been incorporated in our implementation, but is a likely source of further performance gains.
+
+\section{OpenMP}
+OpenMP is another library for parallel programming. It is developed by Intel and can be activated in most compilers. OpenMP use shared memory model. Here the main memory is available on all processors. The key word here is main memory, as each processor has its own cache. OpenMP is very easy to get started with. We will not be using it, but more information is available in Ref.\cite{openmp_citation_po_g}.
+
+\section{External Math Libraries}
+External Math Libraries are optimized for performance. They have built-in functions to handle matrix-matrix multiplications, vector-matrix multiplications, and similar problems. The best libraries are the likes of OpenBLAS, Ref.\cite{openblas_citation}, and Intel MKL, Ref.\cite{mkl_citation}. For our implementation we will make use of MKL on the Abel computing cluster. These libraries often give a huge performance gain in matrix operations, relative to a naive for-loop implementation. \\
+
+We also mention that MKL comes with a parallel version, in where it makes use of OpenMP. Both these libraries are developed by Intel. For our purposes we only made use of the serial version. 
+
+
+
+
+
+
+
+
+
+\section{Input File}
+This section will deal with the user friendly part of our program. This means easy input. We must be able to define what method to use, what atoms and where they are placed and other input variables. We want these to be defined in a separate textfile, to ensure the user  never needs to recompile or edit any code. The input file must be named "INCAR". \\
+
+\begin{figure}[h!]
+\begin{center}
+\fbox{\includegraphics[width=\textwidth]{inputfile100.eps}}
+\caption{Example of input file for our program}
+\label{fig:inputfile100}
+\end{center}
+\end{figure}
+
+An example of input file is given in figure \ref{fig:inputfile100}. This is the only file we need to change the system or method in use. Our program uses the standard fstream library to read the textfile. We then go through it searching for keywords. The keywords are defined to be the leftmost word in each line. \\
+
+Basis\_Set is the first keyword. Here we can choose from a variety of basis sets and the program will make use of this. The current options are STO-3G, 3-21G, 4-31G, 6-31G, 6-311ss, 6-311-2d2p and 6-311-3d3p. Most of basis sets are implemented for all atoms for which they are available. \\
+
+The next keyword is Method. Here the choices are HF, CCSD, CCSDT-1a, CCSDT-1b, CCSDT-2, CCSDT-3, CCSDT-4 and CCSDT. The CCSDT part will be discussed in the next chapter. \\
+
+convergence\_criteria is defined to be $10^{n}$, where n is given in the textfile. -8.0 gives a convergence criteria of $10^{-8}$. The same convergence criteria is used for all methods. \\
+
+Relax\_Pos is meant to call a relaxation procedure, but this is not jet implemented in the program. \\
+
+use\_angstrom gives the user the option to give atomic coordinates in angstrom, instead of atomic units. The options here are true or false. If it is set to true the coordinates are transformed to atomic units inside the program. \\
+
+print\_stuffies is a variable that gives the user the option if he wants extra values printed. If this is set to true there are several interesting numbers printed during calculations. If this is set to false we only print the final energy. This option is added for a situation where we want to perform several hundred smaller calculation. A situation where we most likely are only interested in a final number.. \\
+
+Freeze\_Core is an option available for CCSD. This is not jet implemented. \\
+
+The next few lines give the atoms and its positions in x, y and z. The first letter is used to determine the number of electrons and nuclei charge. The program does not deal with ions. The simplicity of atom positions and charge is an advantage. Usually in computational chemistry packages the number of atom types and number of atoms of each type must be defined. Here we keep it simple and user friendly. \\
+
+The input file stops searching for keywords once they are all found. Hence the user is free to put comments for self in the input file, as long as they are not placed next to keywords or inside the ATOMS section.
+
+\section{General Code Overview}
+In this section we describe the general overview of the code. We will present this as figures, and fill inn the blanks throughout the remaining sections. Each class will be described by its input, output and internal workings. \\
+
+\begin{figure}[h!]
+\begin{center}
+\fbox{\includegraphics[width=\textwidth]{structure.eps}}
+\caption{Code structure}
+\label{fig:structure}
+\end{center}
+\end{figure}
+
+The first class in use is the initializer. This class takes the input from main and makes sure we use it correctly. If angstroms is used as units, the coordinates are transformed to atomic units. If we want extra print options, this is ensured here. We also define a Hartree Fock object in this class, since all methods in computational chemistry generally start with a HF calculation. \\
+
+We then make sure the correct method is called, and pass the HF object. For this reason we drew an arrow from HF to initializer only in figure \ref{fig:structure}, since it is now passed as an object to the other methods. 
+
+
+\section{Hartree Fock}
+In this section we discuss the HF implementation in detail. Our Hartree Fock implementation is grounded in the class hartree\_fock\_solver. The main function is called Get\_Energy. In this function we will calculate the HF energy. The main outlay can be seen in figure \ref{fig:hfimp}. \\
+
+\newpage
+
+\begin{figure}[h!]
+\begin{center}
+\fbox{\includegraphics[width=\textwidth]{hf_imp.jpg}}
+\caption{Basic Outlay of HF Implementation. First column is what action is done, second column is in what class this action takes place}
+\label{fig:hfimp}
+\end{center}
+\end{figure}
+
+The code is described in the text. We have also included key lines from the code itself to better illustrate the implementation. \\
+
+\subsubsection{Filling numbers from EMSL}
+\begin{lstlisting}
+   // Set Matrix Sizes
+   matrix_size_setter matset(Z, Basis_Set, n_Nuclei);
+   Matrix_Size = matset.Set_Matrix_Size();
+
+   // Fill numbers from EMSL
+   Fill_Alpha Fyll(n_Nuclei, Z, Basis_Set,
+Matrix_Size, matset.Return_Max_Bas_Func());
+   alpha = Fyll.Fyll_Opp_Alpha();
+   c = Fyll.Fyll_Opp_c();
+   n_Basis = Fyll.Fyll_Opp_Nr_Basis_Functions();
+   Number_Of_Orbitals = Fyll.Fyll_Opp_Antall_Orbitaler();
+   Potenser = Fyll.Fyll_Opp_Potenser();
+\end{lstlisting}
+
+The first procedure performed in this function is to call the matrix\_size\_setter class. We make an object of this class and send the basis set in use and which atoms are in play. This class then returns how large our arrays must be. We then allocate these arrays. \\
+
+The next step is going to the fill\_alpha class. This class contains data from EMSL, and fills up this data in arrays. The array alpha is filled with values for $\alpha_i$, the array c is filled with values of $c_i$ and Potenser is filled with the angular momentum. We also make a one dimensional array, Number\_Of\_Orbitals, which holds information on how many basis functions are in use for a specific atom. The array n\_Basis holds how many primitives each of these basis functions consist of. \\
+
+\subsubsection{Normalizing GTOs}
+\begin{lstlisting}
+   // Normalize coefficients from EMSL
+   Normalize_small_c();
+\end{lstlisting}
+
+The next step is to multiply in the normalization constant. This is multiplied in with the array c, through the function Normalize\_small\_c. In this function we have implemented the equations from section \ref{normalization_section}. \\
+
+\subsubsection{Overlap Integrals}
+The next step is to make an object of the class hartree\_integrals. Inside this class we will eventually calculate all the integrals we need. However the first step is to fill up an array of $E_t^{ij}$. These values are present in all our integrals. For this we use Eqs. \eqref{important_hf1}, \eqref{important_hf2} and \eqref{important_hf3}. The values for $E_t^{ij}$ will be calculated for all combinations of two primitive GTOS. This enables us to reuse the values in all our integrals, even the electron-electron repulsion. \\
+
+\begin{lstlisting}
+   // Precalculations
+   HartInt.Fill_E_ij();
+
+   // Overlap
+   O = HartInt.Overlap_Matrix();
+\end{lstlisting}
+
+We then calculate the integrals. The overlap is stored in a matrix S and is calculated using Eq. \eqref{overlap_integral}. \\
+
+\subsubsection{Kinetic Energy}
+The two index integrals are stored in a matrix EK. EK consists of our kinetic energy and the nuclei-electron interaction. \\ 
+
+\begin{lstlisting}
+   // One electron operator
+   EK = -0.5*HartInt.Kinetic_Energy()+
+   - HartInt.Nuclei_Electron_Interaction();
+\end{lstlisting}
+
+The kinetic energy is calculated using Eq. \eqref{EKintegralsss}. \\
+
+\subsubsection{Hermite Integrals}
+For the nuclei-electron interaction we need to calculate the Hermite Integrals, $R_tuv^n$. We make a new function to calculate these called Set\_R\_ijk. This function implements the equations given in Eqs. \eqref{nucelec_0_int}, \eqref{nucelec_1_int}, \eqref{nucelec_2_int} and \eqref{nucelec_3_int}. We include the implementation of Eqs. \eqref{nucelec_0_int} and  \eqref{nucelec_1_int}. We put the values in a global four dimensional array R\_ijk.
+
+\begin{lstlisting}
+void Hartree_Integrals::Set_R_ijk(double p, int t, int u, int v, rowvec R1, rowvec R2)
+{
+   int t_max,nn,i,j,k,tt = t,uu = u,vv = v;
+   t_max = t+u+v;
+   double Boys_arg;
+   rowvec Rcp(3);
+   Rcp = R1-R2;
+   Boys_arg = p*dot(Rcp, Rcp);
+   Boys_arg = Boys(Boys_arg, 0);
+   
+   // Initialize R^n_0,0,0
+   for (nn=0; nn<(t_max+1);nn++){
+      R_ijk.at(nn)(0,0,0) = pow(-2*p, nn) *    F_Boys(nn);
+   }
+
+   // Fill up R^n_i,0,0
+   for (i=0; i<tt; i++){
+      for (nn=0; nn<(t_max-i); nn++){
+         R_ijk.at(nn)(i+1,0,0) = Rcp(0) * R_ijk.at(nn+1)(i,0,0);
+         if (i > 0){
+            R_ijk.at(nn)(i+1,0,0) += i * R_ijk.at(nn+1)(i-1,0,0);
+         }
+      }
+   }
+   
+   // Rest of Set_R_ijk function   
+\end{lstlisting}
+We here make use of the Boys function.
+
+\subsubsection{Boys Function}
+The function that calculates a value for the Boys function is called Boys. We have two equations we can use, Eq. \eqref{boys_int_1} and Eq. \eqref{boys_int_2}. One works for small x, the other for large x. We define everything less than x = 50 to be small, and everything greater or equal to 50 to be large. We include the implementation of large x. \\
+
+\begin{lstlisting}
+if (x > 50){
+   Set_Boys_Start(N);
+   F = Boys_Start / pow(2.0, N+1) * sqrt(M_PI/pow(x, 2*N+1));
+}
+\end{lstlisting}
+For small x we Taylor expand around zero. We choose M = 100 in Eq. \eqref{boys_int_1} for the Taylor expansion. 
+
+\begin{lstlisting}
+else{
+   double F=0, sum=0;
+   int M;
+   for (int j=0; j<100; j++){
+      sum = pow(2*x, j);
+      M = 2*N+1;
+      while (M < (2*N+2+2*j)){
+         sum /= M;
+         M += 2;
+      }
+      F += sum;
+   }
+   F *= exp(-x);
+}
+\end{lstlisting}
+We then use the recursive relation in Eq. \eqref{boys_int_3}. 
+
+\begin{lstlisting}
+F_Boys(N) = F;
+for (int i = N; i > 0; i--){
+   F_Boys(i-1) = (2*x*F_Boys(i) + exp(-x))/(2*i-1);
+}
+\end{lstlisting}
+We are left with designing a value to N. N denotes the starting $F_n$ value, from which we will iterate down to the approximate solution. Popular here is putting N as some function of angular momentum, like $N = 6 \times l$. However we just put it to 30. In this value we were able to recreate all the benchmark values in Refs. \cite{boys_referanse_1} and \cite{boys_referanse_2}. These articles discuss the numerical calculation of the Boys function. Using N = 30 our results were also in agreement with the rest of the Computational Physics Group.
+
+\subsubsection{Nuclei-Electron Interaction}
+With these functions we can implement nuclei-electron interaction as given in Eq. \eqref{final_nuclei_electron_thang}. We add these into the array EK. 
+
+\subsubsection{Electron-Electron Interaction}
+The electron-electron repulsion integrals are stored in a four dimensional field, field\_Q. They are calculated through a function called Calc\_Integrals\_On\_The\_Fly. This function takes the input of four orbitals, i, j, k, l, and returns its value for $\langle i j | k l \rangle$. The function is an implementation of Eq. \eqref{electron_electron_int_1_1}, also using Eq. \eqref{electron_electron_int_1_2}. \\
+
+\begin{lstlisting}
+double Calc_Integrals_On_The_Fly(int orb1, int orb2, int orb3, int orb4)
+{    
+    int i,j,k,m;
+
+    // Figure out what atom the AO belongs to, need atomic position
+    i = Calc_Which_Atom_We_Are_Dealing_With(orb1);
+    j = Calc_Which_Atom_We_Are_Dealing_With(orb3);
+    k = Calc_Which_Atom_We_Are_Dealing_With(orb2);
+    m = Calc_Which_Atom_We_Are_Dealing_With(orb4);
+
+    // Here we calculate the two electron integrals
+    // We have already stored E_ij^t so we reuse these
+    // Symmetry considerations are applied elsewhere.
+
+    int E_counter1, E_counter2; // These ensures we get the right E_ij^t
+    int n,p,o,q; // Index for primitive GTO
+    double temp = 0;
+    E_counter1 = E_index(orb1,orb2);
+    for (n=0; n<n_Basis(orb1); n++)
+    {
+        for (p=0; p<n_Basis(orb2); p++)
+        {
+            E_counter2 = E_index(orb3, orb4);
+            for (o=0; o<n_Basis(orb3); o++)
+            {
+                for (q=0; q<n_Basis(orb4); q++)
+                {
+                    temp += c(orb1,n)*c(orb2,p)*c(orb3,o)*c(orb4,q)*
+                            HartInt.Electron_Electron_Interaction_Single
+                (orb1, orb3, orb2, orb4,
+                  i, j, k, m, n, o, p,
+                q, E_counter1, E_counter2);
+
+                // E_t^ij is stored for x,y,z direction
+            // Hence +3 on the counter
+                    E_counter2 += 3;
+                }
+            }
+            E_counter1 += 3;
+        }
+    }
+    return temp; // temp is the value of <ij|kl>
+}
+\end{lstlisting}
+
+
+
+We also take advantage of the eighfold symmetries, written our in Eqs. \eqref{interchangesym} and \eqref{interchangesym2}. We constructed the code like this originally to have the option to not store these integrals at all, and instead calculate them as needed. This would be a game changer in terms of what calculations are possible, since memory would now be scaling as $n^2$ instead of $n^4$. However we later decided on a memory distribution model was sufficient for our purposes, since we want to use coupled cluster. Coupled Cluster use more memory than HF, so the system size is restricted as is. 
+
+\subsubsection{Parallel Implementation and Memory Distribution}
+The hotspot in HF is the two electron integrals. We are not looking to make an optimized HF solver, but we must run this part of the calculation in parallel. \\
+
+We want the workload of the integrals $\langle i j | k l \rangle$ distributed for a given index i and j. We only calculate one version of each symmetric term. \\
+
+\begin{lstlisting}
+    field_Q.set_size(Matrix_Size, Matrix_Size);
+    for (int i = 0; i < Matrix_Size; i++)
+    {
+        for (int j = 0; j < Matrix_Size; j++)
+        {
+        // Leave parts of the field un-initialized
+        // size = number of MPI procs
+        // rank = my MPI rank
+            if ((i+j)%size == rank)
+            {
+                field_Q(i,j) = zeros(Matrix_Size, Matrix_Size);
+            }
+        }
+    }
+\end{lstlisting}
+
+The two electron integrals are a part of the Fock matrix calculation. We want to run this also in parallel, so ensure we can keep the integrals distributed in memory. We remember the Fock matrix was dependant upon 
+
+\begin{equation}
+\sum_{kl} \langle i j | k l \rangle ,
+\end{equation}
+and
+
+\begin{equation}
+\sum_{kl} \langle i l | k j \rangle .
+\end{equation}
+Because of this we define field\_Q to store the integrals as such
+
+\begin{equation}
+field\_Q(i,k)(j,l) = \langle i j | k l \rangle .
+\end{equation}
+We place the two indexes to be swapped in the matrix part of our armadillo field. We then store a $N^3$ sized array of temporary values, F\_temp(i,j,k). We then add the terms together in the correct order to produce $F_{ij}$. Here we can use functions like MPI\_Reduce, or make our own implementation of this function to produce the same result. \\
+
+The important feature is that each processor only calculates terms based on the index i and k. This enables us to leave the indexes not in use in the field undefined, thus distributing the $N^4$ memory over all our P MPI processors in use (MPI procs). Each processor then only stores $\frac{N^4}{P}$ doubles. The amount of bytes for communication scales as $N^3$ doubles. \\
+
+However we earlier calculated the integrals with a work distribution of indexes i and j. This work distribution makes it easier to use symmetries to avoid recalculation of symmetric terms. We therefore also introduce a communication procedure where we reshuffle the terms in field\_Q among the MPI procs. The amount of bytes for communication here is $\frac{1}{8} N^4$, and must be done using MPI\_Alltoallw or a similar implementation producing an identical result. Our HF implementation is not particularly optimized. Comments on we could optimize this implementation is available in the Future Prospects chapter. 
+
+\subsubsection{Pre Iterative Steps}
+The equation to solve in HF is the eigenvalue equation from Eq. \eqref{FOCK_EQUATION_STUFF}. To do this on a computer we must rewrite it slightly. The equation stands as
+
+\begin{equation}
+F C = S C \epsilon . \label{fdsaghbxcxd}
+\end{equation}
+We define a matrix V that satisfies
+
+\begin{equation}
+V^{\dag} S V = I , \label{fdsafafdsafdsafa}
+\end{equation}
+where I is the identity matrix. We insert $V^{\dag}$ to the left on both sides. Also $V V^{-1} $ is inserted into the equations. This leaves
+
+\begin{equation}
+V^{\dag} F V V^{-1} C = V^{\dag} S V V^{-1} C \epsilon .
+\end{equation}
+We also define 
+
+\begin{equation}
+F' = V^{\dag} F V ,
+\end{equation}
+and
+
+\begin{equation}
+C' = V^{-1} C .
+\end{equation} 
+We insert Eq. \eqref{fdsafafdsafdsafa}, F' and C' into Eq. \eqref{fdsaghbxcxd}.
+
+\begin{equation}
+F' C' = C' \epsilon .
+\end{equation}
+This is a true eigenvalue problem, where $\epsilon$ will be the eigenvalues of F' and C' will be the eigenfunctions. \\
+
+We also define an intermediate P, which will be the electron density. 
+
+\begin{equation}
+P_{ij} = \sum_k^N C_i^k C_j^k ,
+\end{equation}
+where N is the number of electrons. We are now ready to begin an iterative procedure. This procedure will be different for RHF and UHF. 
+
+\subsubsection{RHF Iterative Procedure}
+For RHF we initially put the density P to be filled with zeroes. In RHF we will have an equal number of electrons with spin up and spin down. This simplifies our density matrix to
+
+\begin{equation}
+P_{ij} = \sum_k^{N/2} C_i^k C_j^k .
+\end{equation}
+We use Eq. \eqref{Fock_Restricted_1} to find the Fock matrix. We first insert P into the equation.
+
+\begin{equation}
+F_{ij} = (EK)_{ij} + \sum_{kl} P_{kl} (2 \langle i j | k l \rangle - \langle i l | k j \rangle) .
+\end{equation}
+We then perform the iterations until we reach self consistency. \\
+
+\begin{algorithm}[H]
+ \While{RHF\_continue = true}{
+  Calculate $F$ \\
+  $F' = V^{\dag} F V$ \\
+  Solve $F' C' = C' \epsilon$ \\
+  Compute $C = V C'$ \\
+  Compute P \\
+  \If{RHF = converged}{
+    RHF\_continue = false
+  }
+ }
+ \caption{Psudocode for RHF iterations}
+ \label{RHF_ITERATIVE_PROCEDURE}
+\end{algorithm}
+After we have reached self consistency we calculate the energy.
+
+\begin{lstlisting}
+double Hartree_Fock_Solver::Calc_Energy()
+{
+    // Optimized RHF energy calculations
+    Single_E_Energy = accu(EK % P);
+    Two_E_Energy = 0.5*accu(Energy_Fock_Matrix % P) - 0.5*Single_E_Energy;
+    return Single_E_Energy+Two_E_Energy;
+}
+\end{lstlisting}
+Using armadillo the energy calculation simplifies to only two lines of code. 
+
+\subsubsection{UHF Iterative Procedure}
+For UHF we define two densities, $P^{\alpha}$ and $P^{\beta}$, which are the densities for spin up and down. 
+
+\begin{equation}
+P^{\alpha}_{ij} = \sum_k^{N_{\alpha}} C^{\alpha}_{ik} C^{\alpha}_{jk} .
+\end{equation}
+
+\begin{equation}
+P^{\beta}_{ij} = \sum_k^{N_{\beta}} C^{\beta}_{ik} C^{\beta}_{jk} .
+\end{equation}
+Here $N_{\alpha}$ is the number of spin up particles, while $N_{\beta}$ is the number of spin down particles. These must be defined as input as must be equal to the total number of electrons in the system. We define the starting density to be random uniform numbers. We ensure the two matrices are not equal to each other for the first iteration. We use Eqs. \eqref{Fock_Restricted_2} and \eqref{Fock_Restricted_3} to find the Fock matrices. \\
+
+\begin{algorithm}[H]
+ \While{UHF\_continue = true}{
+  Calculate $F_{\alpha}$ \\
+  Calculate $F_{\beta}$ \\
+  $F_{\alpha}' = V^{\dag} F_{\alpha} V$ \\
+  $F_{\beta}' = V^{\dag} F_{\beta} V$ \\
+  Solve $F_{\alpha}' C_{\alpha}' = C_{\alpha}' \epsilon_{\alpha}$ \\
+  Solve $F_{\beta}' C_{\beta}' = C_{\beta}' \epsilon_{\beta}$ \\
+  Compute $C_{\alpha} = V C_{\alpha}'$ \\
+  Compute $C_{\beta} = V C_{\beta}'$ \\
+  Compute $P_{\alpha}$ \\
+  Compute $P_{\beta}$ \\
+  \If{UHF = converged}{
+    UHF\_continue = false
+  }
+ }
+ \caption{Psudocode for UHF iterations}
+ \label{UHF_ITERATIVE_PROCEDURE}
+\end{algorithm}
+After iterations we again calculate the energy. With armadillo the energy calculation simplifies to just two lines of code.
+
+\begin{lstlisting}
+double Hartree_Fock_Solver::Unrestricted_Energy()
+{
+    // Oprimized energy for UHF
+    Single_E_Energy = accu((P_up + P_down) % EK);
+    Two_E_Energy = 0.5 * accu(EnF_up % P_up) + 0.5 * accu(EnF_down % P_down) - 0.5 * Single_E_Energy;
+    return Single_E_Energy + Two_E_Energy;
+}
+\end{lstlisting}
+
+
+\subsubsection{Helping Convergence}
+Sometimes our solution has problems converging. This is a numerical problem and we can introduce a few features to help the convergence along. \\
+
+Damping is one option. This means updating the density only slightly, by inserting
+
+\begin{equation}
+P_{new}' = \gamma P_{old} + \left( 1 - \gamma \right) P_{new} .
+\end{equation}
+This reduce the change in density between iterations. We only used this in UHF. \\
+
+A better alternative is the DIIS method, discussed in section \ref{diis_section_po_g}. We implemented this method for RHF. The first part of our DIIS implementation is calculating the error, $\Delta p$. 
+
+\begin{lstlisting}
+delta_p = F*P*O - O*P*F;
+\end{lstlisting}
+
+We then store the error and Fock matrices for the last M iterations. M is defined to M = 3 in our implementation. After this we construct the matrix B. 
+
+\begin{lstlisting}
+for (int i = 0; i < number_elements_DIIS; i++){
+   for (int j = 0; j < number_elements_DIIS; j++){
+      mat1 = Stored_Error.at(i);
+      mat2 = Stored_Error.at(j);
+      DIIS_B(i,j) = trace(mat1.t() * mat2);
+   }
+}
+\end{lstlisting}
+
+We then find the coefficients c.
+
+\begin{lstlisting}
+DIIS_c = solve(DIIS_B, DIIS_Z);
+\end{lstlisting}
+
+And finally we construct the new Fock matrix, as a linear combination of the previous Fock matrices. 
+
+\begin{lstlisting}
+F = DIIS_c.at(0) * Stored_F.at(0);
+for (int i = 1; i < number_elements_DIIS; i++){
+   F += DIIS_c.at(i) * Stored_F.at(i);
+}
+\end{lstlisting}
+
+\newpage
+
+\section{Atomic Orbital to Molecular Orbital}
+Atomic Orbital (AO) to Molecular Orbital (MO) is required before we can do any CCSD calculations. In this section we describe how to implement this transformation. We are here looking for a highly optimized implementation. Some background is available in Ref.\cite{aotomo_1_cite}. However the author found the algorithms in the literature unsatisfactory. For this reason we will present a new algorithm. First, the simplest transformation is:
+
+\begin{equation}
+\langle ab | cd \rangle = \sum_{ijkl} C_i^a C_j^b C_k^c C_l^d \langle ij|kl \rangle .
+\end{equation}
+This scales as $n^8$ and can be factorized. 
+
+\begin{equation}
+\langle ab | cd \rangle = \sum_i C_i^a \sum_j C_j^b \sum_k C_k^c \sum_l C_l^d  \langle ij|kl \rangle .
+\end{equation}
+This is usually split into four quarter transformations. 
+
+\begin{equation}
+\langle aj|kl \rangle = \sum_{i} C_i^a \langle ij|kl \rangle .
+\end{equation}
+
+\begin{equation}
+\langle ab|kl \rangle = \sum_{j} C_j^b \langle aj|kl \rangle .
+\end{equation}
+
+\begin{equation}
+\langle ab|cl \rangle = \sum_{k} C_k^c \langle ab|kl \rangle .
+\end{equation}
+
+\begin{equation}
+\langle ab|cd \rangle = \sum_{l} C_l^d \langle ab|cl \rangle .
+\end{equation}
+Each of these quarter transformations scale as $n^5$. The implementation of this must be done in an effective way in terms of speed and memory. The latter is the most important as the memory here scales as $N^4$, where N is the number of contracted GTOs, for both $\langle ij | kl\rangle$, $\langle ab | cd \rangle$ and also the intermediates in between each quarter transformation. \\
+
+\begin{algorithm}[H]
+ \KwData{Psudo Code}
+ \KwResult{Algorithm for parallel AOtoMO transformation }
+ \For{a=0; a<N}{
+  \For{k=0; k<N}{
+   \For{l=0; l<N}{
+    \If{Grid k and l over threads}{
+     \For{j=0; j<N}{
+      \For{i=0; i<N}{
+       $QT1(k,l,j) += 
+       C_i^a \times \langle ij|kl \rangle$
+      }
+     }
+     \For{j=0; j<N}{
+      \For{b=0; b<N}{
+       $QT2(k,l,b) += C_j^b \times QT1(k,l,j)$
+       }
+      }
+    }
+   }
+  }
+  Communicate $QT2(k,l,b)$
+  
+  \For{b=0; b<N}{
+   \For{c=0; c<N}{
+    \If{Grid b and c over threads}{
+     \For{k=0; k<N}{
+      \For{l=0; l<N}{  
+       $QT3(b,c,l) = C_k^c \times QT2(k,l,b)$
+       }
+      }
+      \For{l=0; l<N}{
+        \For{d=0; d<N}{
+       $QT4(b,c,d) = C_l^d \times QT3(b,c,l)$
+        }
+      }
+     }
+    }
+   }
+   
+   Communicate $QT4(b,c,d)$\\
+   
+   \If{Store distributed MOs to given thread}{
+    $\langle ab|cd \rangle = QT4(b,c,d)$
+   }
+ }
+  
+ \caption{Simple Psudocode for parallel AOtoMO transformation. QT1, QT2, QT3 and QT4 are intermediates}
+ \label{aotomotrans}
+\end{algorithm}
+
+Algorithm \ref{aotomotrans} is a description of how we optimize this implementation. Further optimizations will come later, but first an illustration of the general idea. We first hold index $a$ constant throughout the transformation. This enables us to use $N^3$ size intermediates. \\
+
+Second the grid over k and l is chosen because neither of these are involved as an index in $C$ for the first two quarter transformations. This makes sure that the terms of $QT2(k,l,b)$ calculated by each thread is the fully two quarter transformed term. This avoids the use of MPI\_Reduce or similar operations and means only one thread needs to communicate these two quarter transformed terms with specific $k$ and $l$, minimizing the communication. The total amount of double precision values communicated in the first communication for now is $N^3$ for each $a$, making it $N^4$ in total for all $a$. \\
+
+After the first communication each thread has all terms in $QT2(k,l,b)$ available. We then make a new grid over $b$ and $c$ and continue calculations in parallel. The grid could be made over $a$ and $b$, but the prior makes in general a better work distribution. This is because index $a$ is held fixed. After the fourth quarter transformation each thread has the fully transformed MOs available for certain $b$ and $c$ indexes. \\
+
+At this point we can distribute the MOs in the same grid as for $b$ and $c$, and start CCSD calculations. However because we want to have the distribution optimized for CCSD we implement another communication. This communication is $N^3$ for each $a$, making it $N^4$ in total for all $a$. \\
+
+After the second communication we simply store the MOs in a memory distributed manner. It is also possible to write to disk. \\
+
+$QT2$ and $QT4$ must be stored as one dimensional arrays, to minimize the number of communication procedures initiated, hence minimize latency. Also all multiplications are written using external math libraries through armadillo. We should also introduce symmetries to optimize our calculations further. The starting AOs had eight-fold symmetries. So does the resulting MOs. However these symmetries does not hold at all the quarter transformed intermediates. This complicates things slightly. \\
+
+The second quarter transformed four dimensional array, QT2, will have symmetries in the two untouched indexes, as well as in the two transformed indexes. We were able to make use of this to reduce communication by 75\%, since symmetric terms need not be communicated twice. This also holds true at the QT4 level obviously. The algorithm using symmetries and external math libraries is presented in algorithm \ref{aotomo2}. \\
+
+\begin{algorithm}
+ \KwData{Psudo Code}
+ \KwResult{Effective Algorithm for parallel AOtoMO transformation using external math libraries}
+ \For{a=0; a<N}{
+  \For{k=0; k<N}{
+   \For{l=0; l<=k}{
+    \If{Calculate on local thread}{
+     A1(*) = C(a,*) $\times$ $\langle kl | ** \rangle$ \\
+     A2($0 \rightarrow a$) = C($0 \rightarrow a$, *) $\times$ A1 \\
+     \For{b=0; b<=a}{
+       QT2(b,k,l) = A2(b) 
+      }
+    }
+   }
+  }
+  
+  MPI\_Allgatherv(QT2) \\
+  
+  \For{b=0; b<=a}{
+   \For{c=0; c<N}{
+    \If{Calculate on local thread}{
+ 	 A1(*) = C(c,*) $\times$
+ 	  QT2(b,*,*) \\
+     A2($0 \rightarrow c$) = C($0 \rightarrow c$, *) $\times$ A1 \\
+     \For{d=0; d<=c}{
+       QT4(b,c,d) = A2(d) 
+      }
+     }
+    }
+   }
+   MPI\_Allgatherv(QT4) \\
+   
+   \If{Store distributed MOs to given thread}{
+    $\langle ab|cd \rangle = QT4(b,c,d)$ \\
+    or write to disk
+   }
+ }
+  
+ \caption{Psudocode for parallel AO to MO transformation using armadillo. A1 and A2 are one dimensional intermediates}
+ \label{aotomo2}
+\end{algorithm}
+
+The communication is somewhat tricky in this algorithm. Since we have inserted symmetries, the size of the message to be transmitted changes dependant upon the index $a$. This also applies to the displacement. We therefore store both in two dimensional arrays where $a$ is the outer index, the inner is the MPI rank. \\
+
+We run through the algorithm one time in advance to calculate these variables. We also calculate and store where each processor will start calculations. This is done to remove any pipeline flushes, which can be caused by the CPU wrongly guessing the answer of an if test. \\
+
+For this reason we define another two dimensional array, this one of size N times the number of MPI procs. In the first two quarter transformation, each rank here stored at what index $l$ will calculations start for a given index $k$. The next $l$ the same rank will perform calculations on will then be 
+
+\begin{equation}
+l \rightarrow l + p ,
+\end{equation}
+where p is the number of MPI procs. The exact same procedure is repeated for quarter transformation 3 and 4. \\
+
+We have also in the more advanced algorithm inserted one dimensional arrays A1 and A2. Using these provide more optimize ways of accessing memory. It may at first sight seem like an additional complication to first calculate A2 as a one dimensional array and later store it in QT2, but this is a more efficient way when using armadillo. \\
+
+The algorithm is implemented in the function 
+
+\begin{lstlisting}
+void Prepear_AOs(int nr_freeze);
+\end{lstlisting}
+The argument is how many core orbitals to freeze. The argument is somewhat wasted, since frozen core approximation is not implemented yet.
+
+\section{CCSD Serial Implementation \label{optimize_serial_version_bii}}
+Our CCSD implementation is quite large, actually close to 10 000 lines. However this is small compared to other optimized implementations, which are usually around 40 000 lines of code. Implementation is important in CCSD, since it scales quickly for larger systems. Additional information on on the advancement of CCSD is available in a series of books, Ref.\cite{book_om_advancements_ccsd}. The most effective implementation to the authors knowledge is the Cyclic Tensor Framework, see Refs.\cite{most_effective_ccsd_dude}, \cite{most_effective_ccsd_dude2} and \cite{most_effective_ccsd_dude3}. \\
+
+In this thesis we will present a simple and effective implementation of CCSD in parallel. First we look at a simple serial implementation. This section discusses the serial implementation. There are two specific goals for this implementation. First getting the energy in the smallest amount of time, second being able to run larger systems. \\
+
+Even more precise we can state that our goals are: \\
+a) Never get zero in a multiplication\\
+b) All multiplication should be done by external math libraries\\
+c) Do not store anything more than needed\\
+
+We first present the general structure of the code. Later we will discuss a few details about different optimizations we have implemented. These will be contrasted to what kind of optimizations is commonly implemented in CCSD. Then, there will be a pros and cons list for our implementation. The chapter will be quite technical as there are several considerations behind each optimization, and it all works in combination. 
+
+\newpage
+
+\subsection{Structure}
+
+For our serial program we first define arrays to store all intermediates, MOs and amplitudes. Two arrays are defined for each amplitude, one for the old amplitudes and one for the new amplitudes. We define a convergence criteria, which stops iterations once the difference of energy from one iteration to the next is bellow this criteria. \\
+
+\begin{algorithm}[H]
+ \KwData{Psudo Code}
+ \KwResult{Structure of CCSD serial program}
+ \While{CCSD continue = true}{
+  Set Eold = Enew \\
+  Calc F1 \\
+  Calc F2 \\
+  Calc F3 \\
+  Calc W1 \\
+  Calc W2 \\
+  Calc W3 \\
+  Calc W4 \\
+  Calc New t1 amplitudes \\
+  Calc New t2 amplitudes \\
+  Set t1 = t1new \\
+  Set t2 = t2new \\
+  Calc $\tau_{ij}^{ab}$ \\
+  Calc New Energy \\
+  \If{Enew - Eold < Convergence criteria}{
+  	CCSD continue = false
+  }
+ }
+ \caption{Psudocode for our serial CCSD program}
+ \label{CCSD_STRUCTURE_SERIAL}
+\end{algorithm}
+
+Algorithm \ref{CCSD_STRUCTURE_SERIAL} illustrates the algorithm as psudocode. Each of the terms behind "Calc" is taken as a separate function to make the code easily readable. 
+
+\subsection{Removing redundant zeroes \label{compact_storage}}
+We now briefly reconsider the molecular integrals, which were calculated as such
+
+\begin{equation}
+\langle pq|rs \rangle = 
+\sum_{\alpha \beta \xi \nu} C_{\alpha}^p C_{\beta}^q C_{\xi}^r C_{\nu}^s \langle \alpha \beta | \xi \nu \rangle .
+\end{equation}
+Here $\langle \alpha \beta | \xi \nu \rangle$ are our atomic orbitals (AOs). These come from our RHF calculations. $\langle pq|rs \rangle$ are the molecular orbitals (MOs). MOs here are presented as a linear combination of AOs. The MOs appear in CCSD as a double bar integral. This is defined as such
+
+\begin{equation}
+\langle pq||rs \rangle = \langle pq | rs \rangle
+- \langle pq | sr \rangle  .
+\end{equation}
+Due to spin considerations, if we fill a matrix with $\langle pq||rs \rangle$ it will be filled with mostly zeroes. However when using an RHF based CCSD it is common that all even numbered spin orbitals have the same spin orientation. This means all odd numbered orbitals will also have the same spin orientation. This results in the zeroes forming pattern that we have identified and utilized. \\
+
+$\langle pq || rs \rangle$ are diagonal in total spin projection. In RHF the total spin is also equal to zero. When we have all odd numbered orbitals with the same spin orientation, and same with even numbered orbitals, this has a practical implication. The implication is that the only terms that will not be equal to zero are those where the sum of the orbital indexes are equal to an even number. \\
+
+We will now visualize this. We construct a program that performs the AO to MO transformation and print $\langle pq||rs \rangle$ for a fixed $p=1$ and $r=1$. In the span of $q$ and $s$ there is formed a matrix, we have noted the terms that will be zero and also the terms that will be non-zero with the indexes (q, s).
+
+\[ \left( \begin{array}{ccccccc}
+(0,0) & 0 & (0,2) & 0 & (0,4) & 0 & \dots \\
+0 & (1,1) & 0 & (1,3) & 0 & (1,5) & \dots \\
+(2,0) & 0 & (2,2) & 0 & (2,4) & 0 & \dots \\
+0 & (3,1) & 0 & (3,3) & 0 & (3,5) & \dots \\
+(4,0) & 0 & (4,2) & 0 & (4,4) & 0 & \dots \\
+0 & (5,1) & 0 & (5,3) & 0 & (5,5) & \dots \\
+\dots & \dots & \dots & \dots & \dots & \dots & \dots \end{array} \right)\]
+
+This array is now stored in our computer as a four dimensional array that we call $I[a][b][c][d]$. We on purpose use a different index in the array than we do for the orbital, even though index a in this example is a referance to orbital p. We can note which orbitals our array-indexes refers to as such\\
+a = p \\
+b = r \\
+c = q \\
+d = s \\
+
+This will be an array of size $(2N)^4$, where $N$ is the number of contraction Gaussian Type Orbitals (GTOs). We now perform a trick. We want our indexes of I to refer to a different orbital, in practise we want:\\
+a = p\\
+b = r\\
+c = q/2 + (q\% 2) N\\
+d = s/2 + (s\% 2) N\\
+
+Where \% is the binary operator and we use integer division by 2. The number 2 comes from two spin orbitals per spacial orbital. Now index c is no longer a referance to orbital q, but a referance to orbital [q/2 + (q \% 2) N]. If we now visualize the same double bar integral with fixed $p=1$ and $r=1$ it looks like this
+
+\[ \left( \begin{array}{cccccccc}
+(0,0) & (0,2) & (0,4) & \dots & 0 & 0 & 0 & \dots \\
+(2,0) & (2,2) & (2,4) & \dots & 0 & 0 & 0 & \dots\\
+(4,0) & (4,2) & (4,4) & \dots & 0 & 0 & 0 & \dots\\
+\dots & \dots & \dots & \dots & \dots & \dots & \dots & \dots\\
+(1,1) & (1,3) & (1,5) & \dots & 0 & 0 & 0 & \dots\\
+(3,1) & (3,3) & (3,5) & \dots & 0 & 0 & 0 & \dots\\
+(5,1) & (5,3) & (5,5) & \dots & 0 & 0 & 0 & \dots\\
+\dots & \dots & \dots & \dots & \dots & \dots & \dots & \dots \end{array} \right)\]
+
+Performing this trick will always result in a matrix that looks something like this. We can split this matrix into four sub-matrices, one top left, one top right, one bottom left and one bottom right. Regardless of $a$ and $b$, we will always have either the two left sub-matrices, or the two right sub-matrices always filled with zeroes. These do not need to be stored. If we ensure we \emph{only perform calculations on orbitals with a non-zero contribution} we can change our array-indexing to:\\
+a = p\\
+b = r\\
+c = q/2 + (q\% 2) N\\
+d = s/2 \\
+
+This means for two orbital where s = 2 and s = 3 we will have the same d value. However one of these orbitals will always be zero, so if we avoid doing calculations on this there will be no problems. And we also reduce the size of the array to half. Visualizing now the same array it looks like this.
+\[ \left( \begin{array}{cccc}
+(0,0) & (0,2) & (0,4) & \dots \\
+(2,0) & (2,2) & (2,4) & \dots \\
+(4,0) & (4,2) & (4,4) & \dots \\
+\dots & \dots & \dots & \dots \\
+(1,1) & (1,3) & (1,5) & \dots \\
+(3,1) & (3,3) & (3,5) & \dots \\
+(5,1) & (5,3) & (5,5) & \dots \\
+\dots & \dots & \dots & \dots  \end{array} \right)\]
+
+And its size will be $\frac{1}{2} (2N)^2$. This kind of indexing can and should be performed on $\textbf{all}$ stored integrals, amplitudes and intermediates. This ensures all memory is reduced by at least 50 \%. Also if a,b,c,d is referencing orbitals in the same manner in all stored arrays we can still use external math libraries as before. However now we will not be passing any zeroes into these external math libraries, so calculations can be faster. This change in indexing keeps all symmetries and also allow easy row and column access. The row is accessed as usual.
+
+\begin{tikzpicture}
+        \matrix [matrix of math nodes,left delimiter=(,right delimiter=)] (m)
+        {
+            (0,0) &(0,2) &(0,4) &\dots \\
+            (2,0) & (2,2) & (2,4) & \dots \\
+            (4,0) & (4,2) & (4,4) & \dots \\
+            \dots & \dots & \dots & \dots \\
+            (1,1) & (1,3) & (1,5) & \dots \\
+			(3,1) & (3,3) & (3,5) & \dots \\
+			(5,1) & (5,3) & (5,5) & \dots \\
+			\dots & \dots & \dots & \dots \\
+        };  
+        \draw[color=red] (m-1-1.north west) -- (m-1-3.north east) -- (m-1-4.north east) -- (m-1-4.south east) -- (m-1-1.south west) -- (m-1-1.north west);
+    \end{tikzpicture}
+
+A column is slightly different, since we only require either the top half or the bottom half of the matrix.
+
+\begin{tikzpicture}
+        \matrix [matrix of math nodes,left delimiter=(,right delimiter=)] (m)
+        {
+            (0,0) &(0,2) &(0,4) &\dots \\
+            (2,0) & (2,2) & (2,4) & \dots \\
+            (4,0) & (4,2) & (4,4) & \dots \\
+            \dots & \dots & \dots & \dots \\
+            (1,1) & (1,3) & (1,5) & \dots \\
+			(3,1) & (3,3) & (3,5) & \dots \\
+			(5,1) & (5,3) & (5,5) & \dots \\
+			\dots & \dots & \dots & \dots \\
+        };  
+        \draw[color=red] (m-1-2.north west) -- (m-3-2.south west) -- (m-4-2.south west) -- (m-4-2.south east) -- (m-3-2.north east) -- (m-1-2.north east) -- (m-1-2.north west);
+\end{tikzpicture}
+
+This can be specified using the submatrix command in armadillo. The attributes of the double bar integrals in RHF are such that there will be some remaining zeroes after removing these. This is because total spin must be zero. However there will be another pattern formed where all remaining zeroes are placed in one of two remaining sub-matrices. This can also be accounted for, reducing memory needs by an additional $\frac{1}{8}$. These calculations can also easily be avoided using submatrix calls in armadillo.\\
+
+Since we are using an RHF basis some matrix elements become independent of spin. This means spin up will have the same value as spin down. This happens mostly for the two dimensional intermediates, and when we store in this manner the practical implications of this becomes identical upper and lower submatrices. In this situation we do not calculate the same term twice. In the future we will refer to this method as compact storage. This method removes all zeroes without defining additional arrays, as is usually done today. 
+
+\subsection{Pre Iterative Calculations}
+Before calculations can start we perform a few tricks. We do not store our MOs in one gigantic array, instead we split it up into several smaller ones. This is done at the end of the AOtoMO transforamtion. These are variables such as MO3 and MO4, decleared in the header file ccsd\_memory\_optimized.h.
+
+\begin{lstlisting}
+field<mat> MO3, MO4 ...
+\end{lstlisting}
+This is a very common procedure in CCSD implementation. It is performed to enable more effectively use of external math libraries. The reason it is more effective is because of memory accessing. If we want to send parts of an array into an external math library, we need first to extract which parts to send. Instead, we can define several smaller arrays like MO3. MO3 is then designed specifically to be sent directly into the external math library. \\
+
+Ref.\cite{ccsd_fac3} also ponders this. In fact, this is such an optimization that even redundant storage of double bar integrals is often used. This means storing a value twice, just to have it easily available for passing to external math library. \\
+
+Originally, we took advantage of this straight forward optimization. However, in the current implementation we will not be storing redundant values. Instead, we will be storing the single bar integrals, and have functions to map these into two dimensional arrays of double bar integrals ready for external math library use. We have surgically designed each and every for loop such that this mapping is redundant in terms of program efficiency. It does reduce memory requirements drastically. \\
+
+The splitting of the integrals for us then becomes somewhat redundant in this regard, but as we will see later it is of clinical importance when we implement memory distribution. \\
+
+Before iterations can start we also allocate memory for our intermediates and amplitudes. We use the principles of section \ref{compact_storage} here. In fact every array to come in contact with an external math library must be stored on this form.
+
+\subsection{F1, F2 and F3}
+We now start the iterative procedure. The first three intermediates are two dimensional and
+very straight forward to calculate. We use Eqs. \eqref{intermedF1}, \eqref{intermedF2} and \eqref{intermedF3}. Our implementation has some additional complications which will be discussed shortly, but is still equivalent to our initial naive implementation.
+
+\begin{lstlisting}
+for (int a = 0; a < unocc_orb; a++){
+  for (int m = 0; m < n_Electrons; m++){
+     F1(a/2, m/2) = accu(integ2(a,m) % T_1);
+  }
+}
+\end{lstlisting}
+
+In this initial naive implementation integ2 is one part of the double bar integrals we pulled out. Since we want to store only the single bar integrals, we replace this with a function Fill\_integ\_2\_2D(int a, int m) to fill up a global mat integ2\_2D. This is then used in external math libraries.
+
+\begin{lstlisting}
+for (int a = 0; a < unocc_orb; a++){
+  for (int m = 0; m < n_Electrons; m++){
+     Fill_integ_2_2D(a, m);
+     F1(a/2, m/2) = accu(integ2_2D % T_1);
+  }
+}
+\end{lstlisting}
+
+$[F_2]$ and $[F_3]$ are calculated in a similar procedure.
+
+\subsection{W1, W2, W3 and W4}
+These intermediates are calculated using Eqs. \eqref{intermedw1}, \eqref{intermedW2}, \eqref{intermedW3} and \eqref{intermedW4}. We include the initial naive implementation of $[W_1]$.
+
+\begin{lstlisting}
+for (int i = 0; i < n_Electrons; i++){
+   for (int j = i+1; j < n_Electrons; j++){
+      Fill_integ8_2D;
+      W_1(i,j)(k/2,l/2) = integ8_2D;
+   }
+}
+
+for (int k = 0; k < n_Electrons; k++) {
+   for (int l = 0; l < n_Electrons; l++){      
+      Fill_integ6_2D(k,l);
+      Fill_integ4_2D(k,l);
+      for (int i = 0; i < n_Electrons; i++){
+         for (int j = i+1; j < n_Electrons; j++){
+            W_1(i,j)(k/2,l/2) += accu(integ6_2D.col(j)
+                % T_1.col(i));
+            W_1(i,j)(k/2,l/2) -= accu(integ6_2D.col(i)
+                % T_1.col(j));
+            W_1(i,j)(k/2,l/2) += 0.5*accu(integ4_2D
+                % tau3.at(i,j));
+         }
+      }
+   }
+}
+\end{lstlisting}
+
+Here the mapping into two dimensional double bar integrals is still done as a $N^4$ procedure, whereas the calculation is now an $N^6$ procedure. For easy external math library use later we store these variables as W1(i,j)(k,l), W2(i,j)(a,m), W3(i,m)(e,n) and W4(a,i)(c,k). We also use symmetries where they can be applied.
+
+\subsection{New amplitudes}
+The T1 amplitudes are calculated using Eq. \eqref{LINK_THIS_SHIT_1_T1}. For the T2 amplitudes we use Eq. \eqref{LINK_THIS_SHIT_1_T2}. To make this amplitude most optimal for external math libraries we store it as
+
+\begin{equation}
+T2(a,i)(b,j) . \label{howtostoret2}
+\end{equation}
+
+\subsection{$\tau_{ij}^{ab}$ and Energy}
+$\tau_{ij}^{ab}$ is calculated in Eq. \eqref{intermedtau}. It is stored in a variable tau3(a,b)(i,j) for optimal use in external math libraries. The energy can be calculated using Eq. \eqref{CCSD_TOTAL_ENERGY}. However we can simplify this further by introducing $\tau_{ij}^{ab}$.
+
+\begin{equation}
+E_{CCSD} = E_0 + \sum_{ai} f_{ai} t_i^a + \frac{1}{4} \sum_{abij} \langle ij || ab \rangle \tau_{ij}^{ab} .
+\end{equation}
+Here we have inserted $t_i^a t_j^b = \frac{1}{2} \left( t_i^a t_j^b - t_j^a t_i^b \right)$. Also the term $f_{ai}$ will always be equal to zero when the basis for our CCSD calculations are a diagonalized Fock matrix.
+
+\begin{equation}
+E_{CCSD} = E_0 + \frac{1}{4} \sum_{abij} \langle ij || ab \rangle \tau_{ij}^{ab} .
+\end{equation}
+
+\subsection{Dodging Additional Unnecessary Calculations}
+In section \ref{compact_storage} we discussed how to avoid multiplication where both terms are zero. However, for CCSD we originally had several terms to be multiplied, and we factorized them. This causes another potential optimization, that we wish to introduce with a simplified example. Consider four terms, A, B, C and D, that want to multiply together.
+
+\begin{equation}
+F = A \times B \times C \times D .
+\end{equation}
+Imagine factorizing this would speed up our calculations.
+
+\begin{equation}
+F = A \times (B \times (C \times D ) ) .
+\end{equation}
+Let us define intermediate E.
+
+\begin{equation}
+E = B \times (C \times D ) .
+\end{equation}
+After we calculated this we are left with
+
+\begin{equation}
+F = A \times E .
+\end{equation}
+At the end of the calculation, it turns out A was equal to zero. This means the entire calculation was wasted, as F would have been zero anyway. Spin consideration causes this situation to occur in CCSD. Luckily because this comes from spin considerations, it is deterministic. We can identify all these situations and avoid calculations. \\
+
+This is implemented in our code, and we want to present an example from the contributions to $t_{ij}^{ab}$ from $[W4]$.
+
+\begin{equation}
+D_{ij}^{ab} t_{ij}^{ab} \leftarrow \sum_{kc} t_{jk}^{bc} \times [W_4]_{ic}^{ak} .
+\end{equation}
+Index $b$ and $j$ only appear in the T2 amplitudes, while indexes $a$ and $i$ appear in the intermediate. Imagine now that index $b$ is an odd number, while index $j$ is an even number. \\
+
+In the sum over $k$ and $c$, $k$ and $c$ can themselves be odd or even. We remember we arranged our MOs so that all odd numbers had same spin orientation. Inside the sum, whenever now $c$ is an odd number we will be exciting two electron into spin up orbitals. If $j$ was an even number we also remove an electron from a spin down orbital. \\
+
+Regardless of index $k$ this will not result in zero spin in total and the amplitude must be equal to zero with our spin restriction. In section \ref{compact_storage} we noted a situation where one of the two sub-matrices would be zero. This is the situation. \\
+
+Also, the indexes $a$, $b$, $i$ and $j$ must themselves result in zero spin in total, or the amplitude will be zero. This limits the number of possible combinations of $t_{jk}^{bc}$ and $[W_4]_{ic}^{ak}$ to where we can actually avoid calculating some terms of $[W_4]_{ic}^{ak}$ that are not equal to zero. \\
+
+The easiest and most human-time effective way of implementing this is to simply go through the factorization backwards, to identify which multiplications we did not need. This has been done.
+
+\section{CCSD Parallel Implementation}
+In parallel implementation we will make extensive use of memory distribution. In CCSD it is quite normal to read some of the MOs from disk. We will not be doing this, but we will place memory distribution as our number one priority. The code was however originally designed to read from disk, so this option is left easily available.
+
+\subsection{Memory Distribution \label{kriseseksjon}}
+In a serial implementation of CCSD the leading memory consumer is an $\frac{1}{16 \times 2} n_v^4$ sized array, $\langle ab||cd \rangle$. The $\frac{1}{16}$ comes from only storing spacial single bar MOs, $\langle ab|cd \rangle$, with $n_v$ being the number of virtual spin orbitals. The factor $\frac{1}{2}$ comes from symmetry. This array is called MO9 in our implementation. \\
+
+However, the array only appears in the calculation of $t_{ij}^{ab}$, as this is the only place where the double bar integrals has three or more virtual indexes (which are $a$, $b$, $c$ etc). This means we can ensure one processor only requires parts of the array MO9 if we distribute work here correctly. It is also possible to distribute the double bar integrals themselves, \cite{ccsd_minne_distribuert_double_bar_artikkel} presents such an algorithm. \\
+
+\begin{lstlisting}
+for (int a = 0; a < unocc_orb; a++){
+   for (int b = a+1; b < unocc_orb; b++){
+      // Distribute work with Work_ID variable
+      if (Work_ID % size == rank){
+         // Perform calculation
+     // Only the processor who passes this if test
+     // will need <ab||cd> with specific a and b
+      }
+   }
+}
+\end{lstlisting}
+
+All the largest parts of the single bar integrals will be distributed in memory. This leaves the largest un-distributed arrays as our T2 amplitudes and some intermediates. Specifically the old and new $t_{ij}^{ab}$, $[W_4]$ and $\tau_{ij}^{ab}$. \\
+
+We will be able to distribute $[W_4]$, through some quite complex operations that actually also provides quite good parallel performance. \\
+
+Because we want to store the old T2 amplitudes as specified in Eq. \eqref{howtostoret2} we are unable to take advantage of symmetries. We are however able take advantage of one symmetry for $\tau_{ij}^{ab}$ and the new T2 amplitudes. Also we have the storage of section \ref{compact_storage}. This means non distributed memory is scaling as
+
+\begin{equation}
+M(n_v, n_o) = \left(\frac{1}{2} + \frac{1}{4} + \frac{1}{16} + \frac{1}{16} \right) n_v^2 n_o^2 \approx n_v^2 n_o^2 .
+\end{equation}
+The factor $\frac{1}{2}$ is the old T2 amplitudes. The $\frac{1}{4}$ is the intermediate $\tau_{ij}^{ab}$. This intermediate improves performance only modestly in our factorization, but is very helpful when optimizing the use of external math libraries. We therefore keep it. The final factors $\frac{1}{16}$ are parts of the MOs we where unable to distribute in memory and also the new T2 amplitudes. The new T2 amplitudes require less memory because we only store one version of each symmetric term. How to distribute $[W_4]$ will be discussed shortly. Contributions from $n_v n_o^3$ is ignored in the non distributed memory scaling.
+
+\subsection{Three Part Parallel}
+Our parallel implementation will be quite straight forward. We will split the iterative procedure in three. Part two is the calculation of $[W_4]$. Part three is the amplitudes. Part one is everything else. The split is performed to keep in line with our guiding parallel principles of minimizing communication initiations. In each part we will also discuss what type of performance we can expect with increased number of CPUs in use. This is known as scaling. \\
+
+\subsubsection{Part 3}
+We first look at the third parallel part, the amplitudes. Each processor allocates memory for the new T2 amplitudes. At first each processor only stores the terms it performs calculations on itself. That is, the T2 amplitudes are distributed in memory. \\
+
+We want $I_{ab}^{cd}$ distributed in memory. The numbers for this variable is stored in MO9. To make the memory distribution easy, we distribute work for $t_{ij}^{ab}$ based on indexes $a$ and $b$. These indexes are symmetric in $t_{ij}^{ab}$. We thus only need calculations on $b > a$. Since we stored the single bar spacial MOs, we must distribute work very delicately if we are to not get to much overhead. \\
+
+Work is distributed with in a block cyclic manner, with the block always being of size 2. This block size is identical to the number of spin MOs per spacial MO. The optimal work distribution with these limitations has the mathematical formula, with all divisions being integer divisions.
+
+\begin{equation}
+Work\_ID = \frac{a}{2} \times \frac{n_v}{2} + \frac{b}{2} - \sum_{n=0}^a \frac{n}{2} .
+\end{equation}
+The number two is the block size, $\frac{n_v}{2}$ is the size of a column in MO9 and the sum ensures we get the optimal distribution for $b > a$. This forumla distributes work over indexes a/2 and b/2 optimally. The work ID is used by the processors to figure out if the calculation is to be performed.
+
+\begin{lstlisting}
+// Find new T2 amplitudes, function
+for (int a = 0; a < unocc_orb; a++)
+{
+   sum_a_n += a/2;
+   A = a/2;
+   AA = A* Speed_Occ - sum_a_n;
+
+   // Potential to read from file here.
+   // Read in a 3 dimensional array of single bar integrals for a
+   // specific index a. Same array is used for a and a+1
+   // Can use for example MPI_File_read(...)
+
+   // a is an even number
+   for (int b = a+2; b < unocc_orb; b++){ // b is even number
+      B = b/2;
+      Work_ID = AA+B;
+      if (Work_ID % size == rank){
+     // Load up 2D arrays for external math libraries
+         Fill_integ3_2D(a, b);
+         Fill_integ9_2D(a, b);
+
+     // Reindexing of tau for external math library use
+         Fill_2D_tau(a, b);
+
+         for (int i = 0; i < n_Electrons; i++){ // i is even number
+            for (int j = i+2; j < n_Electrons; j++){ // j is even number
+               MY_OWN_MPI[index_counter] =
+        (-MOLeftovers(a/2, b/2)(j/2, i/2)
+        + MOLeftovers(a/2, b/2)(i/2, j/2)
+        + W_5(a,b)(i/2,j/2)
+                - W_5(a,b)(j/2,i/2)
+        - accu(W_2(i,j)(a/2, span()) % T_1.row(b/2))
+                + accu(W_2(i,j)(b/2, span()) % T_1.row(a/2))
+        + 0.5*accu(W_1(i,j)(span(0, Speed_Elec-1), span()) % tau1(span(0, Speed_Elec-1), span())) // Half matrix = 0, skip this
+        - accu(t2.at(b,i)(span(0, Speed_Occ-1), j/2) % D3.row(a).t())
+                + accu(t2.at(a,i)(span(0, Speed_Occ-1), j/2) % D3.row(b).t())
+        + accu(t2.at(a,j)(b/2, span()) % D2.row(i/2))
+                - accu(t2.at(a,i)(b/2, span()) % D2.row(j/2))
+        - accu(integ9_2D(span(0, Speed_Occ-1), i/2) % T_1(span(0, Speed_Occ-1), j/2))
+                + accu(integ9_2D(span(0, Speed_Occ-1), j/2) % T_1(span(0, Speed_Occ-1), i/2))
+        + 0.5*accu(integ3_2D(span(0, Speed_Occ-1), span()) % tau3(i,j)(span(0, Speed_Occ-1), span()))) // Half matrix = 0, skip this
+        
+        / (DEN_AI(a/2,i/2)+DEN_AI(b/2, j/2));
+
+        // This is one new T2 amplitude.
+        // Plus one on index counter, and calculate the next
+                index_counter++;
+                j++;
+             }
+             i++;
+          }
+       }
+       b++;
+    }
+}
+\end{lstlisting}
+
+The code segment above is a part of the function for the new T2 amplitudes. This is how our actual code looks. It is designed for performance. The outer loop is index a. If we wanted to read from file, we would be reading in the single bar integrals for a specific index a, into an $N^3$ sized array. \\
+
+The next loop is index b. Here we figure out if a local processor is to perform these calculations. If the processor shall perform calculations, we fill up the largest arrays needed for external math library use. The smaller arrays used in external math libraries are already filled. \\
+
+The next loops are i and j. Since spin must be zero, an even number a and b only allows for even number i and j. The other combinations of odd b, even a etc are also implemented in our code but not included here. \\
+
+Inside the four loops we calculate the amplitude $t_{ij}^{ab}$. We notice every term is written using external math libraries, with the accumulation function. We also skip calculations using the span() function where appropriate, as noted in the previous section. Finally we divide by the denominator and store the new amplitude in a one dimensional array for easier MPI function use. \\
+
+Once calculations are completed we must gather the results and update the old T2 amplitudes. The new T2 amplitudes are all stored in a one dimensional array on each local processor, so we only need to initiate one communication procedure. The most effective would be a collective all-to-all communication, where we send in the new amplitudes and gather them/write over the old ones. For this we could use a function like MPI\_Allgatherv. However this does not work with armadillo, since we cannot map values into an armadillo field directly with MPI. \\
+
+This complicates things slightly. We see two solutions to the problem, but neither is as efficient as the before mentioned one. \\
+
+We can either allocate a new one-dimensional array and perform the prior solution with a mapping of the new amplitudes into the armadillo field afterwards. Or we can perform P one-to-all broadcasts, where P is the number of MPI procs. Then each processors sends its information to others, and this is mapped into the armadillo type array. We chose the prior, but it is slightly less effective. There will be a mapping procedure required. The scaling of the communication will be identical to the scaling of an MPI\_Allgatherv.
+
+\begin{lstlisting}
+MPI_Allgatherv(MY_OWN_MPI, WORK_EACH_NODE(rank), MPI_DOUBLE,
+                   SHARED_INFO_MPI, Work_Each_Node_T2_Parallel, Displacement_Each_Node_T2_Parallel,
+                   MPI_DOUBLE, MPI_COMM_WORLD);
+\end{lstlisting}
+
+Here my own MY\_OWN\_MPI holds the information calculated on the processor. SHARED\_INFO\_MPI will contain the full new non distributed T2 amplitudes. The new amplitudes are symmetric, and we only store one version of each symmetric term. SHARED\_INFO\_MPI is the array we counted as non distributed new T2 amplitudes in section \ref{kriseseksjon}. But our algorithm is really designed to distribute the the new T2 amplitudes. However because we use armadillo with MPI we need this extra variable.\\
+
+Without the complication arising from armadillo and MPI we could also skip this mapping of symmetries into the old T2 amplitudes.
+
+\begin{lstlisting}
+for (int K = 0; K < size; K++){
+   sum_a_n = 0;
+   for (int a = 0; a < unocc_orb; a++){
+      sum_a_n += a/2;
+      A = a/2;
+      AA = A * Speed_Occ - sum_a_n;
+
+      for (int b = a+2; b < unocc_orb; b++){
+         B = b/2;
+         INDEX_CHECK = AA+B;
+         if (INDEX_CHECK % size == K){
+            for (int i = 0; i < n_Electrons; i++){
+               for (int j = i+2; j < n_Electrons; j++){
+                  temp = SHARED_INFO_MPI[index_counter];
+
+          // Map out symmetries after communication
+                  t2(a,i)(b/2, j/2) = temp;
+                  t2(b,i)(a/2, j/2) = -temp;
+                  t2(a,j)(b/2, i/2) = -temp;
+                  t2(b,j)(a/2, i/2) = temp;
+
+                  index_counter++;
+                  j++;
+               }
+               i++;
+            }
+         }
+         b++;
+      }
+   }
+}
+\end{lstlisting}
+
+\subsubsection{Part 2}
+Next is part two of the parallel implementation, which is the $[W_4]$ calculation. Here we also want to distribute this variable in memory. We want to store $[W_4]$ as described previous to make use of external math libraries most effectively.
+
+\begin{equation}
+W4(a,i)(c,k) .
+\end{equation}
+Most of the contributions to $[W_4]$ are themselves distributed in memory on the indexes a and k. We therefore perform calculations on a local processor in a cyclic grid over these two indexes. A local processor thus holds
+
+\begin{equation}
+W4(a,*)(*,k) .
+\end{equation}
+Here star means all terms in this index. If we temporarily swaps the indexes i and k we can store W4(a,k)(*,*), and calculate these terms.
+
+\begin{lstlisting}
+for (int a = 0; a < unocc_orb; a++){
+   for (int m = Where_To_Start_Part2(rank,a); m < n_Electrons; m+=jump){
+      // Fill 2D arrays ready for external math libraries
+      // These are distributed in memory
+      Fill_integ7_2D(a,m);
+      Fill_integ5_2D(a,m);
+
+      for (int e = 0; e < unocc_orb; e++){
+         Fill_integ2_2D_even_even(e, m);
+         for(int i = 0; i < n_Electrons; i++){
+            W4(a,m)(e,i) = -integ7_2D(e/2,i/2)
+        - accu(W_3.at(i,m)(e/2,span()) % T_1.row(a/2))
+                + accu(integ5_2D(span(0, Speed_Occ-1),e/2) % T_1(span(0, Speed_Occ-1),i/2))
+                + 0.5*accu(integ2_2D % t2.at(a,i));
+            i++;
+         }
+         e++;
+      }
+   }
+   a++;
+}
+\end{lstlisting}
+
+The Where\_To\_Start\_Part2(rank,a) variable will be explained later. However, when this intermediate contributes to the T2 amplitudes we need the full matrix that is stored in $W4(a,i)$. \\
+
+Therefore we perform a communication. To pick the correct MPI function we also need to know what to do with the array after the communication. Afterwards we want to multiply
+
+\begin{equation}
+\sum_{ck} W4(a,i)(c,k) \times t2(b,j)(c,k)   .\label{gasghashkashfbdbhcxxcnxcruu}
+\end{equation}
+This multiplication will run in parallel, with work distributed cyclically over $a$ and $i$. The optimal work distribution forumla is
+
+\begin{equation}
+Work\_ID = a \times n_o + i .
+\end{equation}
+The communication needed to get the correct array needed prior and after is thus an all-to-all personalized communication. We will use MPI\_Alltoallw. Each processor here sends its own personalized message to the other MPI procs. The message is reduced to a one dimensional array in MY\_OWN\_MPI before communication. \\
+
+\begin{lstlisting}
+MPI_Alltoallw(MY_OWN_MPI, Global_Worksize_2[rank], Global_Displacement_2[rank], mpi_types_array, SHARED_INFO_MPI, Global_Worksize_2_1[rank], Global_Displacement_2_1[rank], mpi_types_array, MPI_COMM_WORLD);
+\end{lstlisting}
+
+We then perform the multiplication in Eq. \eqref{gasghashkashfbdbhcxxcnxcruu}, with work distributed over a and i. We want this contribution to be added to the new T2 amplitudes, which themselves are work distributed over $a$ and $b$. This means we add another MPI\_Alltoallw communication to get the correct data to the correct processor. \\
+
+We have introduced a temporary memory distributed variable $W5(a,b)(i,j)$ to store this contribution to $t_{ij}^{ab}$. The positive features of this algorithm is that we indeed get all the variables distributed in memory, and communication procedures initiated are two All-to-All communications. All-to-All is generally the most effective kind of communication in MPI. We note that the number of initiated communications is independent of number of processors. This is exactly in line with our parallel implementation guidelines states earlier. The scaling of this communication will be identical to the scaling of two MPI\_Alltoallw functions. This function is highly optimized. Also the work distribution is optimal.
+
+\subsubsection{Part 1 \label{problem_part_ccsd_parallel}}
+The final part of our parallel implementation consist of everything else. Here we construct $[W_1]$, $[W_2]$, $W_3]$, $[F_1]$, $[F_2]$ and $[F_3]$. The contribution from $[F_1]$ to $[F_2]$ and $[F_3]$ is a $n^3$ contribution. Thus we do not need to run this part in parallel. The energy and $\tau_{ij}^{ab}$ is also calculated in serial in the current implementation. These are $n^4$ terms, and will be the leading non parallel calculations. \\
+
+To perform this part of the parallel implementation we make cyclical grids of different kinds. We can reuse the array of new T2 amplitudes, since it is not needed at this step in the calculations. This enables less memory usage. We fill the array with all numbers calculated on the processor. Then perform communication just as in Part 3, and map the correct numbers into the correct armadillo fields. \\
+
+\begin{lstlisting}
+MPI_Allgatherv(MY_OWN_MPI, Work_Each_Node_part1_Parallel[rank], MPI_DOUBLE, SHARED_INFO_MPI, Work_Each_Node_part1_Parallel, Displacement_Each_Node_part1_Parallel, MPI_DOUBLE, MPI_COMM_WORLD);
+\end{lstlisting}
+
+We combine all these variables into one communication to maximise the number of jobs to distribute in accordance to the principles stated in section \ref{work_dist_section_1341}. Also to minimize the latency by initializing less communication procedures. \\
+
+However because we combine several different variables we combine jobs that are not of the same size. This causes problems in our job distribution. The job distribution of part one in our parallel implementation is sub-optimal. In larger calculations some CPUs can get twice the workload of other CPUs. We have used a few tricks to lessen this performance problem. These are things like shifting the job distribution.
+
+\begin{lstlisting}
+if ((Work_ID + Shift) % size == rank){
+   // Perform job
+}
+\end{lstlisting}
+
+The results however are not optimal and as such we cannot expect an optimal performance of this part of the CCSD implementation. Even with this concern combining all remaining variables into one MPI communication was still the better solution, compared to performing communications after each intermediate calculation.   
+
+\newpage
+
+\subsection{Extra Pre Iterative Procedures}
+Before we start iterating we must map out a few new variables. These are extra calculations not needed in serial and includes variables such as displacement and size of messages in the communications. They are calculated in the class \\ ccsd\_non\_iterative\_part. \\
+
+\begin{lstlisting}
+if (Work_ID % size == rank)
+{
+    // Do calculation
+}
+\end{lstlisting}
+
+We also map out which Work\_ID each processor are to perform calculations on. This is for example the Where\_To\_Start\_Part2(rank,a) variable. This enables us to remove all if tests like the one above from our iterative procedure. If tests inside a for loop can be very time consuming if the value true or false changes often from one index to the next. This is especially true if we have two processors. In this case, the value would change every time an index is changed. This means the number of pipeline flushes could potentially be large, dependant upon the compiler. \\
+
+For P processors, the value of the if test changes after (P-1) index changes. Not having any if tests helps performance somewhat, in particular for a small number of MPI procs.
+

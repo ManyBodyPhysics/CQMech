@@ -1,0 +1,830 @@
+\chapter{Practical Hartree-Fock approaches}\label{chap:hartreefock}
+
+\abstract{This chapters aims at catching two birds with a stone;  to introduce to you essential features of the programming languages
+C++ and Fortran with a brief reminder on Python specific topics, and to stress problems like
+overflow, underflow, round off errors and eventually loss of precision due to the finite amount 
+of numbers a computer can represent.  
+The programs we discuss are tailored to these aims.}
+
+\section{Getting Started}
+
+The Hartree-Fock method, initially developed by Hartree \cite{hartree} and improved by Fock \cite{Fock},
+is probably the most popular \emph{ab initio} method of quantum chemistry. There are mainly two reasons for this.
+Firstly, it  provides an excellent first approximation to the wave function and energy of the system, often accounting
+for about 90\%-99\% of the total energy. Secondly, in cases where an even higher degree of precision is needed, the result from a Hartree-Fock calculation
+is a very good starting point for other so-called \emph{post-Hartree-Fock methods}. We will look into one such method, namely perturbation
+theory, in chapter \ref{chapter:perturbation_theory}.
+
+The general form of the equations is
+\begin{equation}
+ \mathcal{F}\psi_k = \varepsilon_k \psi_k,
+\end{equation}
+where $\mathcal{F}$ is the Fock operator, defined as
+\begin{equation}
+\begin{split}
+ \mathcal{F}(\vec x)\psi_k(\vec x)  = & \Big[-\frac{1}{2}\nabla^2 - \sum_{n=1}^K\frac{Z_n}{|\vec R_n - \vec r|}\Big]\psi_k(\vec x) \\
+                                      & +  \sum_{l=1}^N\int d\vec x'|\psi_l(\vec x')|^2\frac{1}{|\vec r - \vec r'|}\psi_k(\vec x) \\
+                                      & - \sum_{l=1}^N \int d\vec x'\psi^*_l(\vec x')\frac{1}{|\vec r - \vec r'|}\psi_k(\vec x')\psi_l(\vec x).
+\end{split}
+\end{equation}
+These are a set of coupled one-electron eigenvalue equations for the spin orbitals $\psi_k$.
+The equations are non-linear because the orbitals we are seeking are
+actually needed in order to obtain the operator $\mathcal{F}$ which determine them. They are therefore often referred to as self consistent field (SCF)
+equations, and they must be solved iteratively.
+
+The term in the square brackets is the one-body operator which we have called $h(\vec r)$ in equation (\ref{eq:H1}). The two extra sums are due to the interactions between
+the electrons. The first of these represent the Coulomb potential from the mean field set up by the electrons of the system. The last is similar to the first
+except that the indices of two orbitals have been switched. This is a direct consequence of the fact that in the derivation of the equations, the state
+is assumed to be a Slater determinant. Note that due to the last sum, the Fock operator is non-local, that is to say, the value of $\mathcal{F}(\vec x)\psi_k(\vec x)$
+depends on the value of $\psi_k(\vec x')$ at all coordinates $\vec x' \in \mathbb{R}^3 \oplus \{\uparrow, \downarrow\}$.
+
+In the following section the general Hartree-Fock equations presented above are derived. Thereafter, we will see how to reformulate the equations to a more
+implementation friendly form. We do this by removing the spin part so that the resulting equations are in terms of spatial orbitals only.
+However, before doing this, it is necessary to decide how to relate the spin orbitals to the spatial orbitals. We discuss the two most common ways to
+do this. These result in the so-called restricted and unrestricted Slater determinants, which are discussed in section \ref{sec:res_and_unres_dets}.
+In section \ref{sec:RHF} we show how the restricted determinant leads to the restricted Hartree-Fock (RHF) equations, which is a set of integro-differential equations for
+the spatial orbitals. In order to solve the equations, the spatial orbitals are expanded in a known basis, which leads to a set of self consistent algebraic equations
+called the \emph{Roothaan equations}. Thereafter, in section \ref{sec:UHF}, we derive the unrestricted Hartree-Fock (UHF)
+equations from the unrestricted determinant. These are also solved by introducing a set of known basis functions, leading to the so-called
+\emph{Pople-Nesbet} equations, which is the unrestricted analogue of the Roothaan equations.
+
+The theory of this chapter is covered by Szabo and Ostlund \cite{Szabo} and Thijssen \cite{Thijssen}.
+
+
+% The Hartree-Fock method is a popular method for calculating the ground state and ground state energy of many-particle systems.
+% It is a variational method which aims to find the minimum of the expectation value of the Hamiltonian. However, instead of minimizing in
+% the space of all possible wave functions, the search is restricted to the set of all Slater determinants.
+% 
+% The Hartree-Fock equations are given by
+% \begin{equation}
+%  \mathcal{F}\psi_k = \varepsilon_k \psi_k,
+% \end{equation}
+% where $\mathcal{F}$ is the Fock operator, defined as
+% \begin{equation}
+% \begin{split}
+%  \mathcal{F}(\vec x)\psi_k(\vec x)  = & \Big[-\frac{1}{2}\nabla^2 - \sum_{i=1}^N\frac{Z_n}{|\vec R_n - \vec r|}\Big]\psi_k(\vec x) \\
+%                                       & +  \sum_{l=1}^N\int d\vec x'|\psi_l(\vec x')|^2\frac{1}{|\vec r - \vec r'|}\psi_k(\vec x) \\
+%                                       & - \sum_{l=1}^N \int d\vec x'\psi^*_l(\vec x')\frac{1}{|\vec r - \vec r'|}\psi_k(\vec x')\psi_l(\vec x).
+% \end{split}
+% \end{equation}
+% These are a set of coupled one-electron eigenvalue equations for the spin orbitals $\psi_k$.
+% The equations are non-linear because the orbitals we are seeking are
+% actually needed in order to obtain the operator $\mathcal{F}$ which determine them. They are therefore often referred to as self consistent field (SCF)
+% equations and must be solved iteratively. The procedure goes along the following lines. First make an initial guess for the spin orbitals $\psi_k$ and calculate the Fock
+% operator $\mathcal{F}$. Then, solve the Hartree-Fock equations to obtain a new set of spin orbitals and use these as input to calculate a new Fock operator.
+% The process continues like this until a convergence criterium is reached.
+% 
+% The term in the square brackets is the one-body operator which we have called $h(\vec r)$ in equation (\ref{eq:H1}). The two extra sums are due to the interactions between
+% the electrons. The first of these represent the Coulomb potential from the mean field set up by the electrons of the system. The last is similar to the first
+% except that the indices of two orbitals have been switched. This is a direct consequence of the fact that in the derivation of the equations, the state
+% is assumed to be a Slater determinant. Note that due to the last sum, the Fock operator is non-local, that is to say, the value of $\mathcal{F}(\vec x)\psi_k(\vec x)$
+% depends on the value of $\psi_k(\vec x')$ at all coordinates $\vec x' \in \mathbb{R}^3 \oplus \{\uparrow, \downarrow\}$.
+% 
+% As discussed in section \ref{sec:fermion_basis}, any state $\ket{\Psi}$ can be written as a linear combination of Slater determinants
+% \begin{equation}
+%  \ket{\Psi} = C_0\ket{c} + \sum_{ia}C^a_i\ket{\Psi^a_i} + \sum_{ijab}C^{ab}_{ij}\ket{\Psi^{ab}_{ij}} + \dots
+% \end{equation}
+% The most crude approximation is to neglect all terms except the reference Slater $\ket{c}$. The Hartree-Fock method answers the following problem:
+% Given the approximation $\ket{\Psi} \approx \ket{c}$, what is the optimal set of spin orbitals to choose as constituents of $\ket{c}$, and what is the resulting approximation
+% for the energy, $E_{HF}$? The energy $E_{HF}$ is defined as the energy found from an exact solution of the Hartree-Fock equations (which presupposes a complete basis).
+% 
+% In most cases the Hartree-Fock method provides an excellent first approximation to the wave function and energy of the system, and it often accounts
+% for about 99\% of the total energy. However, in quantum chemistry an even higher degree of precision is sometimes needed. In such cases, the solution of
+% the Hartree-Fock equations is a very good starting point to use as input to other so-called \emph{post-Hartree-Fock methods}. The other
+% methods discussed in this thesis can be considered to belong to this class of methods.
+% 
+% The difference between the exact energy $E$ and the Hartree-Fock energy $E_{HF}$ is referred to as the correlation energy $\Delta E_{corr}$:
+% \begin{equation}
+%  \Delta E_{corr} = E - E_{HF}.
+% \end{equation}
+
+
+\section{Derivation of the Hartree-Fock equations}
+\label{sec:hartree_fock_derivation}
+As discussed in section \ref{sec:fermion_basis}, the exact ground state can be written as a
+linear combination of Slater determinants
+\begin{equation}
+ \ket{\Phi_0} = C_0\ket{\Psi_0} + \sum_{ia}C^a_i\ket{\Psi^a_i} + \sum_{i<j,a<b}C^{ab}_{ij}\ket{\Psi^{ab}_{ij}} + \dots
+\end{equation}
+where $\ket{\Psi_0}$ is some chosen reference determinant. In the Hartree-Fock method all determinants except $\ket{\Psi_0}$ are neglected, and the
+spin orbitals from which $\ket{\Psi_0}$ is constructed are chosen in such a way that the expectation value $E_0 = \bra{\Psi_0}H\ket{\Psi_0}$ comes as
+close to the excact energy $\mathscr E_0$ as possible. According to the variational principle, the expectation value $E_0$ is an upper bound
+to the exact energy $\mathscr E_0$, which means that the optimal choice of spin orbitals are those which minimise $E_0$. When $E_0$ is at its minimum, any
+infinitesimal variation of the spin orbitals will leave $E_0$ unchanged, which in mathematical terms means that
+\begin{equation}
+ \delta E_0 = \sum_{k=1}^N[\bra{\delta\psi_k}\mathcal F\ket{\psi_k} + \bra{\psi_k}\mathcal F\ket{\delta\psi_k}] = 0.
+\end{equation}
+If each variation could be chosen independently, this would immediately give us $N$ equations to be solved for the $N$ spin orbitals.
+Unfortunately, the spin orbitals cannot be varied independently, but must remain orthonormal throughout the variation. The orthonormality condition reads
+\begin{equation}
+ \langle\psi_k|\psi_l\rangle - \delta_{kl} = 0.
+\end{equation}
+This type of \emph{constrained} optimisation problem can be solved elegantly by the method of Lagrangian multipliers. A good review of the
+method is given in Boas \cite{boas2005mathematical}. The method simply says that if we construct the new functional
+\begin{equation}
+\label{eq:L_operator}
+ \mathscr L = E_0 - \sum_{k,l=1}^N\Lambda_{lk}[\langle\psi_k|\psi_l\rangle - \delta_{kl}],
+\end{equation}
+we can find the stationary value of $E_0$ by solving the \emph{unconstrained} variational problem for $\mathscr L$. By unconstrained we mean that the variation
+of each spin orbital can be chosen freely. The multipliers $\Lambda_{lk}$ are called Lagrange multipliers and will also be determined as part of the solution.
+
+% In the Hartree-Fock method,
+% all but the first term is neglected and the orbitals from which this determinant is
+% constructed are chosen such that the reference energy $E_0 = \bra{\Psi_0}H\ket{\Psi_0}$ comes
+% as close as possible to the exact energy. The variational principle says that the reference
+% energy $E_0$ gives an upper bound to the exact energy. We are therefore seeking the spin orbitals
+% which minimize $E_0$.
+
+Recall from equation (\ref{eq:E_ref}) that the reference energy is given by
+\begin{equation}
+ E_0 = \bra{\Psi_0}H\ket{\Psi_0} = \sum_{k=1}^N\bra{\psi_k} h\ket{\psi_k} + \frac{1}{2}\sum_{k,l=1}^N[\bra{\psi_k\psi_l}g\ket{\psi_k\psi_l}
+                                    - \bra{\psi_k\psi_l}g\ket{\psi_l\psi_k}].
+\end{equation}
+Taking the variation of this yields
+\begin{equation}
+\begin{split}
+ \delta E_0  = & \sum_{k=1}^N\bra{\delta \psi_k}h\ket{\psi_k} \\
+          &   + \frac{1}{2}\sum_{k,l = 1}^N[\bra{\delta \psi_k \psi_l}g\ket{\psi_k \psi_l} + \bra{\psi_k \delta \psi_l}g\ket{\psi_k \psi_l} \\
+          &  \hspace{12mm} - \bra{\delta \psi_k \psi_l}g\ket{\psi_l \psi_k} - \bra{\psi_k \delta \psi_l}g\ket{\psi_l \psi_k}] + \text{c.c.}\\
+        = & \sum_{k=1}^N\bra{\delta \psi_k}h\ket{\psi_k} \\
+          & + \frac{1}{2}\sum_{k,l = 1}^N[\bra{\delta \psi_k \psi_l}g\ket{\psi_k \psi_l} + \bra{\delta\psi_l \psi_k}g\ket{\psi_l \psi_k} \\
+          & \hspace{12mm} - \bra{\delta \psi_k \psi_l}g\ket{\psi_l \psi_k} - \bra{\delta\psi_l \psi_k}g\ket{\psi_k \psi_l}] + \text{c.c.}\\
+        = & \sum_{k=1}^N\bra{\delta \psi_k}h\ket{\psi_k} + \sum_{k,l = 1}^N[\bra{\delta \psi_k \psi_l}g\ket{\psi_k\psi_l} - \bra{\delta \psi_k \psi_l}g\ket{\psi_l \psi_k}] + \text{c.c.}
+\end{split}
+\end{equation}
+where c.c. represents complex conjugate terms.
+In the expression after the second equality sign, we have used that $\bra{\psi_k\delta\psi_l}g\ket{\psi_k\psi_l} = \bra{\delta\psi_l\psi_k}g\ket{\psi_l\psi_k}$, and the last
+line follows from the fact that the indices $k$ and $l$ can be switched since they are dummy indices.
+We next define the two operators
+\begin{eqnarray}
+\label{eq:J_operator}
+ \mathcal{J}(\vec x)\psi_k(\vec x) & = & \sum_{l=1}^N\Big[\int d\vec x' \psi^*_l(\vec x') g(\vec r, \vec r')\psi_l(\vec x')\Big]\psi_k(\vec x), \\ \label{eq:K_operator}
+ \mathcal{K}(\vec x)\psi_k(\vec x) & = & \sum_{l=1}^N\Big[\int d\vec x' \psi^*_l(\vec x') g(\vec r, \vec r')\psi_k(\vec x')\Big]\psi_l(\vec x),
+\end{eqnarray}
+so that the variation of the energy can be written more compactly as
+\begin{equation}
+ \delta E_0 = \sum_{k=1}^N\bra{\delta \psi_k} h + \mathcal J - \mathcal K \ket{\psi_k} + \text{c.c.}
+\end{equation}
+Next we consider the variation of the constraint:
+\begin{equation}
+ \sum_{k,l=1}^N[\Lambda_{lk}\langle\delta\psi_k|\psi_l\rangle + \Lambda_{lk}\langle\psi_k|\delta\psi_l\rangle].
+\end{equation}
+We will show that the second term of this equation is in fact the complex conjugate of the first. To realise this, consider the functional $\mathscr L$
+of equation (\ref{eq:L_operator}). First note that it must be real because $E_0$ is real and the added constraints are equal to zero.
+Taking the complex conjugate of $\mathscr L$ therefore gives
+\begin{equation}
+\begin{split}
+ \mathscr L = & E_0 - \sum_{k,l=1}^N\Lambda^*_{lk}[\langle\psi_k|\psi_l\rangle^* - \delta_{kl}] \\
+            = & E_0 - \sum_{k,l=1}^N\Lambda^*_{lk}[\langle\psi_l|\psi_k\rangle - \delta_{lk}] \\
+            = & E_0 - \sum_{k,l=1}^N\Lambda^*_{kl}[\langle\psi_k|\psi_l\rangle - \delta_{kl}].
+\end{split}
+\end{equation}
+This form of $\mathscr L$ is identical to the original of (\ref{eq:L_operator}) except that $\Lambda_{lk}$ has been replaced by $\Lambda^*_{kl}$.
+Since both will yield exactly the same Lagrange multipliers (assuming that the solution is unique), this means that
+\begin{equation}
+ \Lambda_{lk} = \Lambda^*_{kl},
+\end{equation}
+that is to say, $\Lambda_{lk}$ are the elements of a Hermitian matrix. Thus we can write the variation of the constraint as
+\begin{equation}
+\begin{split}
+ \sum_{k,l=1}^N[\Lambda_{lk}\langle\delta\psi_k|\psi_l\rangle + \Lambda_{lk}\langle\psi_k|\delta\psi_l\rangle] = &
+ \sum_{k,l=1}^N\Lambda_{lk}\langle\delta\psi_k|\psi_l\rangle + \sum_{k,l=1}^N\Lambda^*_{kl}\langle\delta\psi_l|\psi_k\rangle^* \\
+= & \sum_{k,l=1}^N\Lambda_{lk}\langle\delta\psi_k|\psi_l\rangle + \sum_{k,l=1}^N\Lambda^*_{lk}\langle\delta\psi_k|\psi_l\rangle^* \\
+= & \sum_{k,l=1}^N\Lambda_{lk}\langle\delta\psi_k|\psi_l\rangle + \text{c.c.}
+\end{split}
+\end{equation}
+Putting it all together, the variation of $\mathscr L$ is now
+\begin{equation}
+\begin{split}
+ \delta \mathscr L &  = \sum_{k=1}^N\bra{\delta \psi_k}\Big[ (h + \mathcal J - \mathcal K)\ket{\psi_k}
+                     - \sum_{l=1}^N\Lambda_{lk}\ket{\psi_l}\Big] + \text{c.c.} \\
+                   & = 0.
+\end{split}
+\end{equation}
+By defining the Fock operator
+\begin{equation}
+\label{eq:Fock_operator}
+\mathcal{F} = h + \mathcal J - \mathcal K
+\end{equation}
+the above equation can be written even more compactly as
+\begin{equation}
+\begin{split}
+  \delta \mathscr L & =\sum_{k=1}^N\bra{\delta \psi_k}\Big[\mathcal F\ket{\psi_k}
+                       - \sum_{l=1}^N\Lambda_{lk}\ket{\psi_l}\Big] + \text{c.c.} \\
+                    & = 0.
+\end{split}
+\end{equation}
+Since the variations of the spin orbitals can be chosen freely, each term
+in the square brackets must be equal to zero, which implies that
+\begin{equation}
+\label{eq:non_canonical_hartree_fock}
+ \mathcal F\psi_k = \sum_{l=1}^N\Lambda_{lk}\psi_l.
+\end{equation}
+This equation\footnote{We are actually talking about a set of $N$ equations for all the spin orbitals
+$\{\psi_k\}_{k=1}^N$, but since we observe that they are all equal, we may refer to \emph{the equation}.}
+is not on the same form as the one introduced at the beginning of the chapter. This reason is as follows.
+Given a solution $\{\psi_k\}$ of the equation above, it is possible to obtain a new set of spin orbitals
+$\{\psi'_k\}$ via a unitary transformation
+\begin{equation}
+ \psi'_k = \sum_l \psi_l\ U_{lk}
+\end{equation}
+which keeps the expectation value $E_0 = \bra{\Psi'_0}H\ket{\Psi'_0}$ as well as the form of the Fock operator
+unchanged, see Szabo and Ostlund \cite{Szabo}. Thus there is some flexibility in the choice of spin orbitals.
+One particular choice of spin orbitals are the eigenfunctions of the Fock operator
+\begin{equation}
+\label{eq:canonical_hartree_fock}
+ \mathcal F\psi_k = \varepsilon_k\psi_k,
+\end{equation}
+which are guaranteed to exist since $\mathcal F$ is Hermitian.
+These particular spin orbitals are solutions of equation (\ref{eq:non_canonical_hartree_fock}) for the specific case where
+$\Lambda_{lk} = \varepsilon_k\delta_{lk}$. Equation (\ref{eq:canonical_hartree_fock}) is called the canonical Hartree-Fock
+equation.
+
+If we are studying a molecular system, that is, if the system has more than a single nucleus,
+the eigenfunctions of the Hartree-Fock equations are called \emph{molecular orbitals} (MOs). The word
+molecular is used to emphasise that the orbitals are characterisitic of the molecular system.
+It is important to distinguish between these and the familiar atomic orbitals because they are usually
+very different. This means that for molecular systems it is no longer helpful to think of the
+electrons as occupying atomic orbitals; the atomic orbitals are solutions of the Hartree-Fock equations
+for \emph{isolated atoms}, but the molecule is an entirely different system with often entirely 
+different solutions.
+
+When the Slater determinant $\ket{\Psi_0}$ is composed of the $N$ lowest
+eigenfunctions of the Hartree-Fock equations we will call it the Hartree-Fock determinant,
+and we will refer to $E_0$ as the Hartree-Fock energy. This will be the case for the
+remainder of the thesis unless stated otherwise.
+
+% Note that the Hartree-Fock equations are the same for all orbitals, which is reassuring. Recall that the Slater determinant was motivated from the fact that we wanted
+% a many-particle wave function which did not distinguish between the particles. Had we gone through the exact same variational procedure as above, but instead started with the energy
+% corresponding to the Hartree product, the equations would be different for different orbitals.
+
+
+The Hartree-Fock energy can be written in terms of the operators $\mathcal J$ and $\mathcal K$ as
+\begin{equation}
+ E_0 = \sum_{k=1}^N\bra{\psi_k}h + \frac{1}{2}(\mathcal J - \mathcal K) \ket{\psi_k},
+\end{equation}
+which shows that the eigenvalues of the Hartree-Fock equations (\ref{eq:canonical_hartree_fock}) do not add up to the ground state energy; the term $(\mathcal J-\mathcal K)$ in the Fock operator
+is a factor of two too large. However, the energy can be calculated via the eigenvalues in the following two equivalent ways:
+\begin{equation}
+\label{eq:E_ref2}
+\begin{split}
+ E_0 & = \frac{1}{2}\sum_{k=1}^N[\varepsilon_k + \bra{\psi_k}h\ket{\psi_k}] \\
+         & = \sum_{k=1}^N[\varepsilon_k - \frac{1}{2}\bra{\psi_k}\mathcal J - \mathcal K\ket{\psi_k}].
+ \end{split}
+\end{equation}
+
+
+
+
+\section{Restricted and unrestricted determinants}
+\label{sec:res_and_unres_dets}
+In (\ref{eq:canonical_hartree_fock}) the Hartree-Fock equations are written on their most general form. The unknowns are the eigenvalues $\varepsilon_k$ and the spin orbitals $\psi_k$.
+However, before solving the equations, it is useful to rewrite them in terms of spatial orbitals $\phi_k$ instead of spin orbtitals $\psi_k$. This is done by
+integrating out the spin part, as will be shown in the next section. But first we must decide how to construct the spin orbitals from the spatial orbitals. There are two
+ways to do this: One can either form so-called restricted spin orbitals or unrestricted spin orbitals. The two approaches will lead to two different Hartree-Fock methods,
+namely the restricted Hartree-Fock method (RHF) and the unrestricted Hartree-Fock method (UHF), respectively.
+
+\subsection{Restricted determinants}
+Recall from equation (\ref{eq:spin_orbital}) that a spin orbital $\psi_k$ is a spatial orbital $\phi_k$ multiplied with a spin function which is either spin up, $\alpha$,
+or spin down, $\beta$. This means that we can create spin orbitals in the following way
+\begin{equation}
+\label{eq:restricted_spinorbitals}
+\psi_k(\vec x) = \left\{\begin{array}{c} \phi_l(\vec r)\alpha(s) \\
+                                          \text{or} \\
+                                          \phi_l(\vec r)\beta(s). \\
+                       \end{array}\right.
+\end{equation} 
+Spin orbitals on this form are called restricted spin orbitals, and the Slater determinants they form are called restricted determinants. In such determinants, a spatial orbital is either
+occupied by a single electron or two electrons, see figure \ref{fig:restricted_determinant}. A determinant which has
+every spatial orbital doubly occupied, is called a closed shell determinant (left figure), whereas a
+determinant that has one or more partially filled spatial orbitals, is called an open shell determinant (right figure). 
+If the system has an odd number of electrons, the determinant will always be open shell.
+However, an even number of electrons does not imply that the determinant is closed shell; if degeneracies apart from that due to spin are present, it can still be open shell.
+% Recall from equation (\ref{eq:spin_orbital}) that a spin orbital $\psi_k$ is a spatial orbital $\phi_k$ multiplied with a spin function which is either spin up, $\alpha$,
+% or spin down, $\beta$. This means that a set of $N$ spin orbitals can be generated from a set of $\lceil N/2\rceil$ spatial orbitals in the following way:
+% \begin{equation}
+% \label{eq:restricted_spinorbitals}
+%  \{\psi_{2k-1}(\vec x),\,\psi_{2k}(\vec x)\} = \{\phi_k(\vec r)\alpha(s),\,\phi_k(\vec r)\beta(s)\}, \qquad k = 1,\dots,\lceil N/2\rceil.
+% \end{equation} 
+% Spin orbitals on this form are called restricted spin orbitals, and the Slater determinants they form are called restricted determinants. In such determinants, a spatial orbital is either
+% occupied by a single electron or two electrons, one with spin up and one with spin down, see figure \ref{fig:restricted_determinant}. A determinant which has
+% every spatial orbital doubly occupied, is called a closed shell determinant (left figure), whereas a
+% determinant that has one or more partially filled spatial orbitals, is called an open shell determinant (right figure). 
+% If the system has an odd number of electrons, the determinant will always be open shell.
+% However, an even number of electrons does not imply that the determinant is closed shell; if degeneracies apart from that due to spin are present, it can still be open shell.
+\begin{figure}
+ \begin{center}
+  \includegraphics[scale=0.7]{hartree_fock/figures/restricted_determinant.pdf}
+  \caption{Illustration of the restricted determinant comprised of spin orbitals on the form (\ref{eq:restricted_spinorbitals}).
+  The left and right figures illustrate closed and open shell determinants, respectively.}
+  \label{fig:restricted_determinant}
+ \end{center}
+\end{figure}
+
+Throughout this thesis we will limit the use of restricted determinants (and restricted Hartree-Fock) to closed shell systems. This means that the
+spin orbitals are given by
+\begin{equation}
+\label{eq:restricted_spinorbitals2}
+ \{\psi_{2k-1}(\vec x),\,\psi_{2k}(\vec x)\} = \{\phi_k(\vec r)\alpha(s),\,\phi_k(\vec r)\beta(s)\}, \qquad k = 1,\dots,N/2,
+\end{equation}
+where $N$ is the number of electrons.
+
+
+\subsection{Unrestricted determinants}
+In equation (\ref{eq:restricted_spinorbitals}) the spin-up electrons are described by the same set of spatial orbitals as the spin-down electrons.
+For closed shell systems this is often a good assumption.
+However, consider the open shell determinant illustrated to the right of figure \ref{fig:restricted_determinant}. The electron occupying the spin orbital 
+$\phi_3\alpha$ will have an exchange interaction with the other spin-up electrons, but not with the spin-down electrons.
+Hence, it could be energetically favourable to let the spin-up levels shift with respect to the spin-down levels, as shown in figure \ref{fig:unrestricted_determinant}.
+This can be accomplished by letting the spin-up and spin-down electrons be described by different sets of spatial orbitals.
+Spin orbitals formed in this way, are called unrestricted spin orbitals, and the Slater determinants they form are called unrestricted determinants.
+\begin{equation}
+\label{eq:unrestricted_spinorbitals}
+\psi_k(\vec x) = \left\{\begin{array}{c} \phi^\alpha_l(\vec r)\alpha(s) \\
+                                          \text{or} \\
+                                          \phi^\beta_l(\vec r)\beta(s). \\
+                       \end{array}\right.
+\end{equation}
+% In addition to  the case of open shell systems, unrestricted determinants will give lower energies when studying the dissociation of molecules. To see why, consider the
+% $H_2$-molecule as an example. The restricted orbitals will force both electrons to be located at either of the nuclei with equal probability, and although
+% this is reasonable for small internuclear distances, as the distance increases, the electrons will in fact be located at differenct nuclei. This can only be
+% realised by the unrestricted spin orbitals which allow the electrons to have different spatial orbitals.
+\begin{figure}
+ \begin{center}
+  \includegraphics[scale=0.7]{hartree_fock/figures/unrestricted_determinant.pdf}
+  \caption{Illustration of the unrestricted determinant comprised of spin orbitals on the form (\ref{eq:unrestricted_spinorbitals}).
+  The left and right figures illustrate closed and open shell determinants, respectively.}
+  \label{fig:unrestricted_determinant}
+ \end{center}
+\end{figure}
+
+
+% \subsection{Determinants and spin operators}
+% The Hamiltonians which are considered in this thesis have no spin dependence. This means that it commutes with the total spin operator $\mathcal S^2$ and the spin operator
+% in the z-direction $\mathcal S_z$. If we assume that the ground state of the Hamiltonian $\ket{\Psi_0}$ is nondegenerate, this means that $\ket{\Psi_0}$ is
+% an eigenstate of $\mathcal S^2$ and $\mathcal S_z$ as well. To see this consider the following:
+% \begin{equation}
+% \begin{split}
+%  H(\mathcal S^2\ket{\Psi_0}) = & ([\mathcal S^2,H] + \mathcal S^2H)\ket{\Psi_0} \\
+%                              = & (0 + \mathcal S^2H)\ket{\Psi_0} \\
+%                              = & E_0 \mathcal S^2\ket{\Psi_0}.
+% \end{split}
+% \end{equation}
+% This shows that $\mathcal S^2\ket{\Psi_0}$ is also an eigenstate of $H$ with eigenvalue $E_0$, and since the ground state of $H$ is nondegenerate, this means that
+% \begin{equation}
+%  \mathcal S^2\ket{\Psi_0} = A \ket{\Psi_0}
+% \end{equation}
+% for some constant $A$.
+
+\section{Slater determinants and the spin operators}
+\label{sec:determinants_and_spin}
+In this section we define the total spin operator for a system of $N$ particles and discuss how it acts on the restricted
+and unrestricted determinants.
+The reader is referred to the texts by Griffiths \cite{griffiths} and Shankar \cite{shankar} for introductory treatments of spin.
+
+\subsection{Single-particle spin operators}
+The spin operator for a single particle is given by
+\begin{equation}
+ \vec s = s_x\vec i + s_y\vec j + s_z\vec k,
+\end{equation}
+where $s_x$, $s_y$ and $s_z$ are the operators for the spin components along the coordinate axes. The latter satisfy the commutation relations
+\begin{equation}
+\label{eq:spin_commutation}
+ [s_x,\, s_y] = i s_z, \qquad [s_y,\, s_z] = i s_x, \qquad [s_z,\, s_x] = i s_y.
+\end{equation}
+The squared magnitude of the spin operator is a scalar operator
+\begin{equation}
+ \vec s^2 = s_x^2 + s_y^2 + s_z^2.
+\end{equation}
+It commutes with all of the component operators, and it is therefore possible to find a common set of eigenstates for
+$\vec s^2$ and \emph{one} of the operators $s_x$, $s_y$ or $s_z$. The standard choice in the literature is $s_z$.
+A particle with spin $s$ has eigenvalues $s(s+1)$ and $m_s$
+\begin{equation}
+\begin{split}
+ s^2 \ket{s,m_s} & = s(s+1) \ket{s,m_s}, \\
+ s_z \ket{s,m_s} & = m_s \ket{s,m_s},
+\end{split}
+\end{equation}
+where $m_s$ can take the values $\{-s,\, -s+1,\dots, s-1,\,s\}$. Electrons have spin 1/2, and the Hilbert space describing the
+spin of electrons is therefore spanned by the two states $\ket{1/2,1/2}$ and $\ket{1/2,-1/2}$, which we until now have simply called $\ket{\alpha}$
+and $\ket{\beta}$ for convenience.
+
+
+
+\subsection{Many-particle spin operators}
+Analogously, the total spin operator for a system of $N$ particles is given by
+\begin{equation}
+ \vec S = \sum_{i=1}^N \vec s(i),
+\end{equation}
+where $\vec s(i)$ is the spin operator of particle $i$. Also, the squared magnitude of the total spin operator is given by
+\begin{equation}
+ \vec S^2 = S_x^2 + S_y^2 + S_z^2,
+\end{equation}
+where
+\begin{equation}
+ S_I = \sum_{i=1}^N s_I(i), \qquad I\in\{x,\,y,\,z\}.
+\end{equation}
+Since the Hamiltonian does not depend on any of the spin coordinates, it commutes with $\vec S^2$ as well as $S_z$
+\begin{equation}
+ [H,\,\vec S^2] = [H, S_z] = 0.
+\end{equation}
+This means that the exact eigenstates of the Hamiltonian $\ket{\Phi_i}$ are also eigenstates of $\vec S^2$ and $S_z$ \cite{Szabo}
+\begin{align}
+ \vec S^2\ket{\Phi_i} & = S(S+1)\ket{\Phi_i},\\
+ S_z\ket{\Phi_i} & = M_S\ket{\Phi_i},
+\end{align}
+where $S$ and $M_S$ are the quantum numbers for the total spin and its projection along the $z$-axis, respectively. A natural question
+to ask at this point is whether or not the restricted and unrestricted determinants are eigenstates of $\vec S^2$ and $S_z$. The answer to this question is as follows:
+\begin{enumerate}
+ \item Both restricted and unrestricted determinants are eigenstates of $S_z$.
+ \item The restricted closed shell determinant is an eigenstate of $\vec S^2$ with eigenvalue 0, making it a pure singlet state.
+ \item The unrestricted determinant is generally not an eigenstate of $\vec S^2$.
+\end{enumerate}
+A consequence of point three is that unrestricted determinants can often have a total spin which is larger than the exact value. This is often referred
+to as spin contamination of the unrestricted determinant. The reader is referred to appendix \ref{chapter:appendix_spin} for a further discussion of this topic.
+
+
+
+
+\section{Restricted Hartree-Fock (RHF)}
+\label{sec:RHF}
+The most general form of the Hartree-Fock equations is given in (\ref{eq:canonical_hartree_fock}), where the Fock operator $\mathcal{F}$ is given by (\ref{eq:Fock_operator}) and
+(\ref{eq:J_operator}) - (\ref{eq:K_operator}). We will now derive the equations which result from the restricted assumption in (\ref{eq:restricted_spinorbitals}).
+Without loss of generality, we may assume that the spin orbital on which the Fock operator acts is spin up:
+\begin{equation}
+\mathcal F(\vec x)\phi_k(\vec r) \alpha(s) = \varepsilon_k\phi_k(\vec r)\alpha(s).
+\end{equation}
+Writing out the Fock operator explicitly:
+\begin{equation}
+\begin{split}
+ \mathcal{F}(\vec x)\phi_k(\vec r)\alpha(s)  = &\ h(\vec r)\,\phi_k(\vec r)\alpha(s) \\
+                      &  + \Big[\sum_{l=1}^N\int d\vec x'\psi^*_l(\vec x')g(\vec r, \vec r')\psi_l(\vec x')\Big]\phi_k(\vec r)\alpha(s) \\
+                       &    - \Big[\sum_{l=1}^N\int d\vec x'\psi^*_l(\vec x')g(\vec r, \vec r')\phi_k(\vec r')\alpha(s)\Big]\psi_l(\vec x) \\
+                       = &\  \varepsilon_k\phi_k(\vec r)\alpha(s).
+%                    & = & h(\vec r)\,\phi_k(\vec r)\xi_k(s) + 2\Big[\sum_{l=1}^{N/2}\int d\vec r'\phi^*_l(\vec r')g(\vec r, \vec r')\phi_l(\vec r')\Big]\phi_k(\vec r)\xi_k(s) \\
+%                    &   & - \Big[\sum_{l=1}^{N/2}\int d\vec r'\phi^*_l(\vec r')g(\vec r, \vec r')\phi_k(\vec r')\Big]\phi_l(\vec r)\xi_k(s).
+\end{split}
+\end{equation}
+Our goal is to integrate out the spin of this equation. To do this, we must also express the spin orbitals in the sums in terms of spatial orbitals. We will assume that
+$N$ is an even number of electrons and that we are dealing with a closed shell determinant. This means that both sums, which run from 0 to $N$, can be split
+into two sums which run from 0 to $N/2$:
+\begin{equation}
+\begin{split}
+ \mathcal{F}(\vec x)\phi_k(\vec r)\alpha(s)  = &\ h(\vec r)\,\phi_k(\vec r)\alpha(s) \\
+                      &  + \Big[\sum_{l=1}^{N/2}\int d\vec x'\phi^*_l(\vec r')\alpha^*(s')g(\vec r, \vec r')\phi_l(\vec r')\alpha(s')\Big]\phi_k(\vec r)\alpha(s) \\
+                      &  + \Big[\sum_{l=1}^{N/2}\int d\vec x'\phi^*_l(\vec r')\beta^*(s')g(\vec r, \vec r')\phi_l(\vec r')\beta(s')\Big]\phi_k(\vec r)\alpha(s) \\
+                       & - \Big[\sum_{l=1}^{N/2}\int d\vec x'\phi^*_l(\vec r')\alpha^*(s')g(\vec r, \vec r')\phi_k(\vec r')\alpha(s')\Big]\phi_l(\vec r)\alpha(s) \\
+                       & - \Big[\sum_{l=1}^{N/2}\int d\vec x'\phi^*_l(\vec r')\beta^*(s')g(\vec r, \vec r')\phi_k(\vec r')\alpha(s')\Big]\phi_l(\vec r)\beta(s) \\
+                     = &\ \varepsilon_k\phi_k(\vec r)\alpha(s).
+\end{split}
+\end{equation}
+We note that the first two sums are in fact equal when the spin coordinate $s'$ is integrated out. Furthermore, the last sum is equal to zero because the integration
+is over unequal spins. Thus we are left with
+\begin{equation}
+\begin{split}
+ \mathcal{F}(\vec x)\phi_k(\vec r)\alpha(s)  = &\ h(\vec r)\,\phi_k(\vec r)\alpha(s) \\
+                      &  + 2\Big[\sum_{l=1}^{N/2}\int d\vec r'\phi^*_l(\vec r')g(\vec r, \vec r')\phi_l(\vec r')\Big]\phi_k(\vec r)\alpha(s) \\
+                       & - \Big[\sum_{l=1}^{N/2}\int d\vec r'\phi^*_l(\vec r')g(\vec r, \vec r')\phi_k(\vec r')\Big]\phi_l(\vec r)\alpha(s) \\
+                       = &\ \varepsilon_k\phi_k(\vec r)\alpha(s).
+\end{split}
+\end{equation}
+If we now multiply both sides of the equation by $\alpha^*(s)$ and integrate over the spin coordinate $s$ we finally arrive at
+\begin{equation}
+\begin{split}
+ \big[\sum_{s=\uparrow\downarrow}\alpha^*(s)\mathcal F(\vec x)\alpha(s)\Big]\phi_k(\vec r) = &\ h(\vec r)\,\phi_k(\vec r) \\
+                       & + 2\Big[\sum_{l=1}^{N/2}\int d\vec r'\phi^*_l(\vec r')g(\vec r, \vec r')\phi_l(\vec r')\Big]\phi_k(\vec r) \\
+                       & - \Big[\sum_{l=1}^{N/2}\int d\vec r'\phi^*_l(\vec r')g(\vec r, \vec r')\phi_k(\vec r')\Big]\phi_l(\vec r) \\
+                     = &\ \varepsilon_k\phi_k(\vec r).
+\end{split}
+\end{equation}
+Defining the restricted spatial Fock operator as
+\begin{equation}
+ F(\vec r) = \sum_{s=\uparrow\downarrow}\alpha^*(s)\mathcal F(\vec x)\alpha(s),
+\end{equation}
+the equation can be written as
+\begin{equation}
+\label{eq:RHF}
+ F(\vec r)\phi_k(\vec r) = \varepsilon_k\phi_k(\vec r),
+\end{equation}
+where
+\begin{equation}
+\begin{split}
+ F(\vec r)\phi_k(\vec r) = & h(\vec r)\,\phi_k(\vec r)  + 2\Big[\sum_{l=1}^{N/2}\int d\vec r'\phi^*_l(\vec r')g(\vec r, \vec r')\phi_l(\vec r')\Big]\phi_k(\vec r) \\
+                       & - \Big[\sum_{l=1}^{N/2}\int d\vec r'\phi^*_l(\vec r')g(\vec r, \vec r')\phi_k(\vec r')\Big]\phi_l(\vec r).
+\end{split}
+\end{equation}
+The spatial Fock operator can be written more compactly as
+\begin{equation}
+\label{eq:restricted_Fock_operator}
+ F(\vec r) = h(\vec r) + 2 J(\vec r) - K(\vec r),
+\end{equation}
+where
+\begin{align}
+ J(\vec r)\phi_k(\vec r) & = \sum_{l=1}^{N/2}\int d\vec r'\phi^*_l(\vec r')g(\vec r, \vec r')\phi_l(\vec r')\Big]\phi_k(\vec r), \\
+ K(\vec r)\phi_k(\vec r) & = \sum_{l=1}^{N/2}\int d\vec r'\phi^*_l(\vec r')g(\vec r, \vec r')\phi_k(\vec r')\Big]\phi_l(\vec r).
+\end{align}
+Note the factor 2 in front of the direct term, or more to the point, the absence of the factor 2 in front of the exchange term. This is due to the fact that
+the exchange interaction is only present between electrons of equal spins.
+
+To find the energy, consider the first line of equation (\ref{eq:E_ref2}):
+\begin{equation}
+\begin{split}
+ E_0 = & \frac{1}{2}\sum_{k=1}^N[\varepsilon_k + \bra{\psi_k}h\ket{\psi_k}] \\
+         = & \frac{1}{2}\sum_{k=1}^{N}\bra{\psi_k}(\mathcal{F} + h)\ket{\psi_k}.
+\end{split}
+\end{equation}
+If, as we did above, insert the assumption (\ref{eq:restricted_spinorbitals}) and split the sum in two sums, one with spin up and one with spin down, we get
+\begin{equation}
+\label{eq:E_ref3}
+ E_0 = \sum_{k=1}^{N/2}\bra{\phi_k}(F + h)\ket{\phi_k}.
+\end{equation}
+
+
+\subsection{Introducing a basis}
+We have now eliminated the spin from the general Hartree-Fock equations (\ref{eq:canonical_hartree_fock}) and arrived at equation (\ref{eq:RHF}), which represents
+a set of integro-differential equations for the spatial orbitals. There is presently no feasible way to solve these as they stand.
+However, by expressing the orbitals in terms of some known basis
+\begin{equation}
+\label{eq:linear_expansion}
+ \phi_k(\vec r) = \sum_{\mu=1}^M C_{\mu k}\chi_\mu(\vec r),
+\end{equation}
+where $M$ is the number of basis functions, the equations can be converted to a set of algebraic equations. Inserting this expansion into equation (\ref{eq:RHF}) gives
+\begin{equation}
+ \sum_{\nu=1}^M F(\vec r)\chi_\nu(\vec r) C_{\nu k} = \varepsilon_k \sum_{\nu=1}^M C_{\nu k} \chi_{\nu}(\vec r).
+\end{equation}
+If we now multiply by $\chi^*_\mu(\vec r)$ and integrate with respect to $\vec r$, we get the so-called \emph{Roothaan equations} \cite{roothan}
+\begin{equation}
+ \sum_{\nu=1}^M F_{\mu\nu}C_{\nu k} = \varepsilon_k\sum_{\nu=1}^M S_{\mu\nu}C_{\nu k},
+\end{equation}
+or in matrix notation
+\begin{equation}
+\label{eq:Roothaan}
+ \mathbf{FC}_k = \varepsilon_k\mathbf{SC}_k,
+\end{equation}
+where
+\begin{equation}
+ F_{\mu\nu} = \int d\vec r \chi^*_\mu(\vec r)F(\vec r)\chi_\nu(\vec r)
+\end{equation}
+is the Fock matrix and
+\begin{equation}
+ S_{\mu\nu} = \int d\vec r \chi^*_\mu(\vec r)\chi_\nu(\vec r)
+\end{equation}
+is the overlap matrix. If the basis is orthonormal, the overlap matrix is the identity matrix. However, in molecular calculations Gaussian functions are
+most often used, and these are not orthogonal. In section \ref{sec:gen_eig} we show how equation (\ref{eq:Roothaan}) can be transformed to a regular
+eigenvalue problem
+\begin{equation}
+ \mathbf{F'C'_k} = \varepsilon_k\mathbf C'_k.
+\end{equation}
+
+
+Let us take a closer look at the Fock matrix:
+\begin{equation}
+ \begin{split}
+  F_{\mu\nu} = & \int d\vec r \chi^*_\mu(\vec r) F(\vec r)\chi_\nu(\vec r)\\
+                  = & \int d\vec r \chi^*_\mu(\vec r)[h(\vec r) + 2J(\vec r) - K(\vec r)]\chi_\nu(\vec r) \\
+                  = & \bra\mu h\ket\nu + 2 \bra\mu J\ket\nu - \bra\mu K\ket\nu.
+ \end{split}
+\end{equation}
+To get the final expression for the matrix, we insert the expansion (\ref{eq:linear_expansion}) into the operators $J(\vec r)$ and $K(\vec r)$.
+For $J(\vec r)$ this gives
+\begin{equation}
+\begin{split}
+ J(\vec r)\chi_\nu(\vec r) & = \Big[\sum_{k=1}^{N/2}\int d\vec r'\phi^*_k(\vec r')g(\vec r, \vec r')\phi_k(\vec r')\Big]\chi_\nu(\vec r) \\
+                             & = \Big[\sum_{k=1}^{N/2}\sum_{\sigma,\lambda=1}^M\int d\vec r'\chi^*_\sigma(\vec r')g(\vec r, \vec r')\chi_\lambda(\vec r')\Big]C^*_{\sigma k}C_{\lambda k}\chi_\nu(\vec r),
+\end{split}
+\end{equation}
+so that
+\begin{equation}
+ \bra\mu J\ket\nu = \sum_{k=1}^{N/2}\sum_{\sigma,\lambda=1}^M\bra{\mu\sigma}g\ket{\nu\lambda}C^*_{\sigma k}C_{\lambda k},
+\end{equation}
+where the matrix element $\bra{\mu\sigma}g\ket{\nu\lambda}$ is defined in equation (\ref{eq:pqgrs_def}).
+The expression for $\bra\mu K\ket\nu$ is similar, except that the indices $\nu$ and $\lambda$ switch places in the integral:
+\begin{equation}
+ \bra\mu K\ket\nu = \sum_{k=1}^{N/2}\sum_{\sigma,\lambda=1}^M\bra{\mu\sigma}g\ket{\lambda\nu}C^*_{\sigma k}C_{\lambda k}.
+\end{equation}
+Hence, the Fock matrix is given explicitly in terms of the basis functions by
+\begin{equation}
+ F_{\mu\nu} = \bra\mu h\ket\nu + \sum_{k=1}^{N/2}\sum_{\sigma,\lambda=1}^M[2\bra{\mu\sigma}g\ket{\nu\lambda} - \bra{\mu\sigma}g\ket{\lambda\nu}]C^*_{\sigma k}C_{\lambda k}.
+\end{equation}
+It is useful to define the so-called density matrix
+\begin{equation}
+\label{eq:density_matrix}
+ P_{\lambda\sigma} = 2\sum_{k=1}^{N/2}C_{\lambda k}C^*_{\sigma k},
+\end{equation}
+which allows us to write the Fock matrix more compactly as
+\begin{equation}
+\label{eq:Fock_matrix}
+ F_{\mu\nu} = \bra\mu h\ket\nu + \frac{1}{2}\sum_{\sigma,\lambda=1}^M P_{\lambda\sigma}[2\bra{\mu\sigma}g\ket{\nu\lambda} - \bra{\mu\sigma}g\ket{\lambda\nu}].
+\end{equation}
+
+The energy is found by expanding equation (\ref{eq:E_ref3}) in the known basis:
+\begin{equation}
+ \label{eq:E_ref4}
+ E_0 = \frac{1}{2}\sum_{\mu,\nu=1}^M P_{\nu\mu}[\bra\mu h \ket\nu + F_{\mu\nu}].
+\end{equation}
+
+
+
+
+
+
+% Inserting this into equation (\ref{eq:RHF}), multiplying by $\chi^*_p(\vec r)$ and integrating with respect to $\vec r$ leads to the following set of eigenvalue equations
+% \begin{equation}
+%  \mathbf{FC_k} = \varepsilon_k\mathbf{SC_k}
+% \end{equation}
+% where the elements of the Fock matrix $\mathbf{F}$ are
+% \begin{equation}
+%  F_{pq} = \bra{p}h\ket{q} + \sum_l\sum_{rs}(2\bra{pr}g\ket{qs} - \bra{pr}g\ket{sq})C^*_{rl}C_{sl}
+% \end{equation}
+% and the elements of the overlap matrix $\mathbf{S}$ are
+% \begin{equation}
+%  S_{pq} = \langle p|q\rangle.
+% \end{equation}
+% It is convenient to introduce the density matrix $P_{rs} = 2\sum_lC^*_{rl}C_{sl}$. The Fock matrix is then written more compactly as
+% \begin{equation}
+%  F_{pq} = \bra{p}h\ket{q} + \frac{1}{2}\sum_{rs}P_{rs}(2\bra{pr}g\ket{qs} - \bra{pr}g\ket{sq}).
+% \end{equation}
+% The energy is given by
+% \begin{equation}
+%  E_{ref} = \sum_{pq}P_{pq}\bra{p}h\ket{q} + \frac{1}{2}\sum_{pqrs}P_{pq}P_{rs}(\bra{pr}g\ket{qs} - \frac{1}{2}\bra{pr}g\ket{sq})
+% \end{equation}
+
+
+\section{Unrestricted Hartree-Fock (UHF)}
+\label{sec:UHF}
+We now derive the unrestricted Hartree-Fock equations which result from the assumption (\ref{eq:unrestricted_spinorbitals}). The Hartree-Fock equations (\ref{eq:canonical_hartree_fock})
+are now split into two sets of equations
+\begin{align}
+\mathcal F^\alpha(\vec x) \phi^\alpha_k(\vec r)\alpha(s) & = \varepsilon^\alpha_k\phi^\alpha_k(\vec r)\alpha(s), \qquad k=1,2,\dots, N_\alpha, \\
+\mathcal F^\beta(\vec x) \phi^\beta_k(\vec r)\beta(s) & = \varepsilon^\beta_k\phi^\beta_k(\vec r)\beta(s), \qquad k=1,2,\dots, N_\beta,
+\end{align}
+where $N^\alpha$ and $N^\beta$ are the number of electrons with spin up and spin down, respectively.
+Again, we want to take out the spin part of the equations. We can insert the unrestricted spin orbitals (\ref{eq:unrestricted_spinorbitals}) and do the calculations
+explicitly in the same way as we did for the restricted case. However, using the insight gained during our previous calculation, we can come up with the answer directly. Consider
+for example the operator $\mathcal F^\alpha(\vec x)$. It contains a kinetic term and the potential due to the atomic nuclei. Furthermore, it contains
+a direct interaction term due to the mean field set up by all electrons, both spin up and spin down. Finally it contains an exchange term due to the mean field
+set up by the electrons \emph{with spin up only}. Thus we can conclude that the equations for the spatial orbitals $\phi^\alpha_k$ are given by
+\begin{equation}
+\label{eq:HF^alpha}
+ F^\alpha(\vec r)\phi^\alpha_k(\vec r) = \varepsilon^\alpha_k\phi^\alpha_k(\vec r),
+\end{equation}
+where the unrestricted spin up Fock operator is defined as
+\begin{equation}
+\label{eq:Foperator^alpha}
+ F^\alpha(\vec r) = h(\vec r) + [J^\alpha(\vec r) - K^\alpha(\vec r)] + J^\beta(\vec r),
+\end{equation}
+with
+\begin{align}
+ J^\alpha(\vec r)\phi^\alpha_k(\vec r) = & \sum_{l=1}^{N^\alpha}\Big[\int d\vec r' \phi^\alpha_l(\vec r')g(\vec r, \vec r')\phi^\alpha_l(\vec r')\Big]\phi^\alpha_k(\vec r), \\
+ J^\beta(\vec r)\phi^\alpha_k(\vec r) = & \sum_{l=1}^{N^\beta}\Big[\int d\vec r' \phi^\beta_l(\vec r')g(\vec r, \vec r')\phi^\beta_l(\vec r')\Big]\phi^\alpha_k(\vec r), \\
+ K^\alpha(\vec r)\phi^\alpha_k(\vec r) = & \sum_{l=1}^{N^\alpha}\Big[\int d\vec r' \phi^\alpha_l(\vec r')g(\vec r, \vec r')\phi^\alpha_k(\vec r')\Big]\phi^\alpha_l(\vec r).
+\end{align}
+The equations for the spatial orbitals $\phi^\beta_k$ are the same, except that the indices $\alpha$ and $\beta$ switch places.
+
+
+\subsection{Introducing a basis}
+To solve the unrestricted Hartree-Fock equations we expand the spatial orbitals in terms of a known basis
+\begin{align}
+ \phi^\alpha_k(\vec r) & = \sum_{\mu=1}^M C^\alpha_{\mu k} \chi_\mu(\vec r), \label{eq:phi^alpha_expansion}\\
+ \phi^\beta_k(\vec r) & = \sum_{\mu=1}^M C^\beta_{\mu k} \chi_\mu(\vec r), \label{eq:phi^beta_expansion}
+\end{align}
+just as we did in the restricted case. Inserting the expansion (\ref{eq:phi^alpha_expansion}) into equation (\ref{eq:HF^alpha}) gives
+\begin{equation}
+ \sum_{\nu=1}^M F^\alpha(\vec r)\chi_\nu(\vec r)C^\alpha_{\nu k} = \varepsilon^\alpha_k\sum_{\nu=1}^M C^\alpha_{\nu k}\chi_\nu(\vec r).
+\end{equation}
+If we multiply this equation by $\chi^*_\mu(\vec r)$ and integrate over $\vec r$, we get
+\begin{equation}
+ \sum_{\nu=1}^M F^\alpha_{\mu\nu}C^\alpha_{\nu k} = \varepsilon^\alpha_k\sum_{\nu=1}^M S_{\mu\nu}C^\alpha_{\nu k},
+\end{equation}
+where $S_{\mu\nu}$ is the overlap matrix and $F^\alpha_{\mu\nu}$ is the matrix representation of the unrestricted spatial Fock operator
+\begin{equation}
+\label{eq:Fmatrix^alpha}
+ F^\alpha_{\mu\nu} = \int d\vec r \chi^*_\mu(\vec r) F^\alpha(\vec r)\chi_\nu(\vec r).
+\end{equation}
+The corresponding equations for the spin down particles are derived in exactly the same way, of course. In total we have the two sets of equations
+\begin{align}
+ \mathbf F^\alpha \mathbf C^\alpha_k = & \varepsilon^\alpha_k\mathbf{SC}^\alpha_k, \label{eq:pople-nesbet_up}\\
+ \mathbf F^\beta \mathbf C^\beta_k = & \varepsilon^\beta_k\mathbf{SC}^\beta_k, \label{eq:pople-nesbet_down}
+\end{align}
+called the \emph{Pople-Nesbet equations} \cite{pople_nesbet}, which are the unrestricted generalisation of the Roothaan equations derived in the previous section. They are nonlinear
+and coupled since the matrices $\mathbf F^\alpha$ and $\mathbf F^\beta$ are functions of both $\{\mathbf C^\alpha_k\}$ and $\{\mathbf C^\beta_k\}$.
+
+The final expression for the Fock matrix $\mathbf F^\alpha$ is obtained by inserting the expansion (\ref{eq:phi^alpha_expansion}) into equation (\ref{eq:Fmatrix^alpha}).
+Recalling that the Fock operator $F^\alpha(\vec r)$ is given by (\ref{eq:Foperator^alpha}) this leads to
+\begin{equation}
+ F^\alpha_{\mu\nu} = \bra{\mu}h\ket{\nu} + \sum_{k=1}^{N^\alpha}\sum_{\sigma,\lambda=1}^M\langle\mu\sigma||\nu\lambda\rangle(C^\alpha_{\sigma k})^* C^\alpha_{\lambda k}
+                                         + \sum_{k=1}^{N^\beta}\sum_{\sigma,\lambda=1}^M\bra{\mu\sigma}g\ket{\nu\lambda}(C^\beta_{\sigma k})^* C^\beta_{\lambda k},
+\end{equation}
+and similarly we find
+\begin{equation}
+ F^\beta_{\mu\nu} = \bra{\mu}h\ket{\nu} + \sum_{k=1}^{N^\beta}\sum_{\sigma,\lambda=1}^M\langle\mu\sigma||\nu\lambda\rangle(C^\beta_{\sigma k})^* C^\beta_{\lambda k}
+                                         + \sum_{k=1}^{N^\alpha}\sum_{\sigma,\lambda=1}^M\bra{\mu\sigma}g\ket{\nu\lambda}(C^\alpha_{\sigma k})^* C^\alpha_{\lambda k},
+\end{equation}
+where $\bra{\mu\sigma}g\ket{\nu\lambda}$ and $\langle\mu\sigma||\nu\lambda\rangle$ are defined in equations (\ref{eq:pqgrs_def}) and (\ref{eq:pqgrs_as_def}),
+respectively. If we introduce the density matrices
+\begin{align}
+  P^\alpha_{\lambda\sigma} = & \sum_{k=1}^{N^\alpha}C^\alpha_{\lambda k} (C^\alpha_{\sigma k})^*, \label{eq:density_matrix_up}\\
+  P^\beta_{\lambda\sigma} = & \sum_{k=1}^{N^\beta}C^\beta_{\lambda k} (C^\beta_{\sigma k})^*, \label{eq:density_matrix_down}\\
+  P^T_{\lambda\sigma} = & P^\alpha_{\lambda\sigma} + P^\beta_{\lambda\sigma},
+\end{align}
+the Fock matrices can be written more compactly as
+\begin{equation}
+\label{eq:Fock_matrix_up}
+ F^\alpha_{\mu\nu} = \bra{\mu}h\ket{\nu} + \sum_{\sigma,\lambda=1}^M\left[\langle\mu\sigma||\nu\lambda\rangle P^\alpha_{\lambda\sigma}
+                                                                      + \bra{\mu\sigma}g\ket{\nu\lambda}P^\beta_{\lambda\sigma}\right],
+\end{equation}
+and
+\begin{equation}
+\label{eq:Fock_matrix_down}
+ F^\beta_{\mu\nu} = \bra{\mu}h\ket{\nu} + \sum_{\sigma,\lambda=1}^M\left[\langle\mu\sigma||\nu\lambda\rangle P^\beta_{\lambda\sigma}
+                                                                  + \bra{\mu\sigma}g\ket{\nu\lambda}P^\alpha_{\lambda\sigma}\right].
+\end{equation}
+
+
+The energy can be found from the expectation value of these matrices, keeping in mind that the double counting of the interaction terms must be taken into account.
+The expression is
+\begin{equation}
+ E_0 = \frac{1}{2}\sum_{k=1}^{N^\alpha}\sum_{\mu,\nu=1}^M \big[\bra\mu h\ket\nu + F^\alpha_{\mu\nu} \big](C^\alpha_{\mu k})^* C^\alpha_{\nu k}
+          +\frac{1}{2}\sum_{k=1}^{N^\beta}\sum_{\mu,\nu=1}^M\left[\bra\mu h\ket\nu + F^\beta_{\mu\nu}\right](C^\beta_{\mu k})^* C^\beta_{\nu k},
+\end{equation}
+or in terms of the density matrices
+\begin{equation}
+ E_0 = \frac{1}{2}\sum_{\mu,\nu=1}^M\left[P^T_{\nu\mu}\bra\mu h\ket\nu + P^\alpha_{\nu\mu}F^\alpha_{\mu\nu} + P^\beta_{\nu\mu}F^\beta_{\mu\nu}\right].
+\end{equation}
+
+
+
+
+\section{Solving the generalised eigenvalue problem}
+\label{sec:gen_eig}
+
+In this section we show how the generalised eigenvalue problem
+\begin{equation}
+ \mathbf{FC}_k = \varepsilon_k\mathbf{SC}_k,
+\end{equation}
+can be transformed to the regular eigenvalue problem
+\begin{equation}
+ \mathbf F'\mathbf C'_k = \varepsilon_k\mathbf C'_k.
+\end{equation}
+We can achieve this if there exists a matrix $\mathbf X$ such that
+\begin{equation}
+ \mathbf{X^\dagger S X = I},
+\end{equation}
+because, if we then let $\mathbf{C_k = X C'_k}$, we get
+\begin{equation}
+\begin{split}
+ \mathbf{FC}_k & = \varepsilon_k\mathbf{SC}_k \\
+ \mathbf{FXC}'_k & = \varepsilon_k\mathbf{SXC}'_k \\
+ \mathbf{X^\dagger FXC}'_k & = \varepsilon_k\mathbf{X^\dagger SXC}'_k \\
+ \mathbf F' \mathbf C'_k & = \varepsilon_k\mathbf C'_k,
+\end{split}
+\end{equation}
+where
+\begin{equation}
+ \mathbf{F' = X^\dagger FX}.
+\end{equation}
+It only remains to show that the matrix $\mathbf X$ does indeed exist and how to construct it. First note that the overlap matrix $\mathbf S$ is Hermitian:
+\begin{equation}
+\begin{split}
+ S_{\mu\nu} = & \int d\vec r \chi^*_\mu(\vec r) \chi_\nu(\vec r) \\
+            = & \int d\vec r \chi_\nu(\vec r) \chi^*_\mu(\vec r) \\
+            = & S^*_{\nu\mu}.
+\end{split}
+\end{equation}
+This means that there exists a unitary matrix $\mathbf U$ such that
+\begin{equation}
+\label{eq:similarity_transf}
+ \mathbf{U^\dagger S U = s},
+\end{equation}
+where $\mathbf s =$ diag$(s_1, s_2, \dots, s_M)$ is a diagonal matrix containing the eigenvalues of $\mathbf S$, which are all real, and the columns of $\mathbf U$ are the eigenvectors of $\mathbf S$.
+Furthermore, the eigenvalues $\{s_i\}$ are positive. To see this, consider the expansion of some function $f(\vec r)$, not identically equal to zero, in terms of the basis functions $\chi_\mu(\vec r)$:
+\begin{equation}
+ f(\vec r) = \sum_\mu A_\mu\chi_\mu(\vec r).
+\end{equation}
+No matter how the coefficients are chosen, the norm of $f(\vec r)$ will be positive. In particular, if we choose $\mathbf{A}=[A_\mu]$ to be equal to the $i$'th eigenvector of $\mathbf S$, we get
+\begin{equation}
+\begin{split}
+ 0 < \langle f|f\rangle = & \sum_{\mu\nu}A^*_\mu S_{\mu\nu} A_\nu = \mathbf{A^\dagger S A} \\
+                    = & s_i\mathbf{A^\dagger A} =  s_i ||\mathbf A||^2.
+\end{split}                  
+\end{equation}
+Now, since all eigenvalues are positive, one can define the matrix
+\begin{equation}
+ \mathbf s^{-1/2} = \left[\begin{array}{c c c c}
+                          s_1^{-1/2} &&& \\
+                          & s_2^{-1/2} && \\
+                          && \ddots & \\
+                          &&& s_M^{-1/2} 
+                         \end{array}\right].
+\end{equation}
+Multiplying equation (\ref{eq:similarity_transf}) from the left and right by $\mathbf s^{-1/2}$ yields
+\begin{equation}
+\begin{split}
+ \mathbf s^{-1/2} \mathbf U^\dagger \mathbf{S U s}^{-1/2} =  \mathbf I \\
+ (\mathbf{Us}^{-1/2})^\dagger \mathbf S (\mathbf{Us}^{-1/2}) =  \mathbf I,
+\end{split}
+\end{equation}
+which means that
+\begin{equation}
+ \mathbf X = \mathbf{Us}^{-1/2}.
+\end{equation}

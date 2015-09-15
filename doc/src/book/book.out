@@ -1,0 +1,130 @@
+\BOOKMARK [0][-]{chapter.1}{Experimental data and definitions of the many-body problem}{}% 1
+\BOOKMARK [1][-]{section.1.1}{Introduction}{chapter.1}% 2
+\BOOKMARK [1][-]{section.1.2}{Masses and Binding energies}{chapter.1}% 3
+\BOOKMARK [1][-]{section.1.3}{Q-values and separation energies}{chapter.1}% 4
+\BOOKMARK [1][-]{section.1.4}{Radii}{chapter.1}% 5
+\BOOKMARK [1][-]{section.1.5}{Definitions}{chapter.1}% 6
+\BOOKMARK [1][-]{section.1.6}{A modified Hamiltonian}{chapter.1}% 7
+\BOOKMARK [1][-]{section.1.7}{Numerical solution of the single-particle Schroedinger equation}{chapter.1}% 8
+\BOOKMARK [0][-]{chapter.2}{Mean-field approaches}{}% 9
+\BOOKMARK [1][-]{section.2.1}{Derivation of Hartree-Fock equations in coordinate space}{chapter.2}% 10
+\BOOKMARK [1][-]{section.2.2}{Definitions and notations}{chapter.2}% 11
+\BOOKMARK [1][-]{section.2.3}{Derivation of Hartree-Fock equations in coordinate space}{chapter.2}% 12
+\BOOKMARK [1][-]{section.2.4}{Analysis of Hartree-Fock equations in coordinate space}{chapter.2}% 13
+\BOOKMARK [1][-]{section.2.5}{Hartree-Fock by varying the coefficients of a wave function expansion}{chapter.2}% 14
+\BOOKMARK [1][-]{section.2.6}{Hartree-Fock algorithm}{chapter.2}% 15
+\BOOKMARK [1][-]{section.2.7}{Analysis of Hartree-Fock equations and Koopman's theorem}{chapter.2}% 16
+\BOOKMARK [0][-]{chapter.3}{Second quantization}{}% 17
+\BOOKMARK [1][-]{section.3.1}{Second quantization}{chapter.3}% 18
+\BOOKMARK [1][-]{section.3.2}{One-body operators in second quantization}{chapter.3}% 19
+\BOOKMARK [1][-]{section.3.3}{Two-body operators in second quantization}{chapter.3}% 20
+\BOOKMARK [1][-]{section.3.4}{Particle-hole formalism}{chapter.3}% 21
+\BOOKMARK [1][-]{section.3.5}{Summarizing and defining a normal-ordered Hamiltonian}{chapter.3}% 22
+\BOOKMARK [1][-]{section.3.6}{Hartree-Fock in second quantization and stability of HF solution}{chapter.3}% 23
+\BOOKMARK [2][-]{subsection.3.6.1}{Thouless' theorem}{section.3.6}% 24
+\BOOKMARK [2][-]{subsection.3.6.2}{New operators}{section.3.6}% 25
+\BOOKMARK [2][-]{subsection.3.6.3}{Showing that |"526930B = |c'"526930B }{section.3.6}% 26
+\BOOKMARK [2][-]{subsection.3.6.4}{Hartree-Fock in second quantization and stability of HF solution}{section.3.6}% 27
+\BOOKMARK [1][-]{section.3.7}{Operators in second quantization}{chapter.3}% 28
+\BOOKMARK [0][-]{chapter.4}{Nuclear forces}{}% 29
+\BOOKMARK [1][-]{section.4.1}{Introduction}{chapter.4}% 30
+\BOOKMARK [1][-]{section.4.2}{Single-particle and two-particle quantum numbers}{chapter.4}% 31
+\BOOKMARK [2][-]{subsection.4.2.1}{Clebsch-Gordan coefficients}{section.4.2}% 32
+\BOOKMARK [2][-]{subsection.4.2.2}{Quantum numbers and the Schroeodinger equation in relative and CM coordinates}{section.4.2}% 33
+\BOOKMARK [1][-]{section.4.3}{Components of the force and isospin}{chapter.4}% 34
+\BOOKMARK [2][-]{subsection.4.3.1}{Isospin}{section.4.3}% 35
+\BOOKMARK [1][-]{section.4.4}{Two-body matrix elements}{chapter.4}% 36
+\BOOKMARK [1][-]{section.4.5}{Phenomenology of nuclear forces: From Yukawa to Lattice QCD and Effective Field Theory}{chapter.4}% 37
+\BOOKMARK [2][-]{subsection.4.5.1}{Phenomenology of nuclear forces: Charge Dependence}{section.4.5}% 38
+\BOOKMARK [1][-]{section.4.6}{Symmetries of the Nucleon-Nucleon \(NN\) Force}{chapter.4}% 39
+\BOOKMARK [2][-]{subsection.4.6.1}{Dramatis Personae}{section.4.6}% 40
+\BOOKMARK [2][-]{subsection.4.6.2}{Components of the force and quantum numbers}{section.4.6}% 41
+\BOOKMARK [2][-]{subsection.4.6.3}{Relative and CoM system, quantum numbers}{section.4.6}% 42
+\BOOKMARK [2][-]{subsection.4.6.4}{Components of the force and quantum numbers}{section.4.6}% 43
+\BOOKMARK [2][-]{subsection.4.6.5}{Phenomenology of one-pion exchange}{section.4.6}% 44
+\BOOKMARK [1][-]{section.4.7}{Models for nuclear forces and derivation of non-relativistic expressions}{chapter.4}% 45
+\BOOKMARK [1][-]{section.4.8}{The Lippman-Schwinger equation for two-nucleon scattering}{chapter.4}% 46
+\BOOKMARK [0][-]{chapter.5}{Configuration interaction theory}{}% 47
+\BOOKMARK [1][-]{section.5.1}{Introduction}{chapter.5}% 48
+\BOOKMARK [1][-]{section.5.2}{Full Configuration Interaction Theory}{chapter.5}% 49
+\BOOKMARK [2][-]{subsection.5.2.1}{Full Configuration Interaction Theory}{section.5.2}% 50
+\BOOKMARK [1][-]{section.5.3}{Building a many-body basis}{chapter.5}% 51
+\BOOKMARK [2][-]{subsection.5.3.1}{Basic steps in a building an FCI code}{section.5.3}% 52
+\BOOKMARK [2][-]{subsection.5.3.2}{Example case: pairing Hamiltonian}{section.5.3}% 53
+\BOOKMARK [2][-]{subsection.5.3.3}{Angular momentum algebra, Wigner-Eckart theorem}{section.5.3}% 54
+\BOOKMARK [0][-]{chapter.6}{Many-body perturbation theory}{}% 55
+\BOOKMARK [1][-]{section.6.1}{Many-body perturbation theory}{chapter.6}% 56
+\BOOKMARK [0][-]{chapter.7}{Coupled cluster theory}{}% 57
+\BOOKMARK [1][-]{section.7.1}{Introduction}{chapter.7}% 58
+\BOOKMARK [1][-]{section.7.2}{Creation and Annihilation operators}{chapter.7}% 59
+\BOOKMARK [1][-]{section.7.3}{CCSD Wavefunction}{chapter.7}% 60
+\BOOKMARK [1][-]{section.7.4}{Derivation of Equations}{chapter.7}% 61
+\BOOKMARK [2][-]{subsection.7.4.1}{Baker-Campbell-Hausdorff formula}{section.7.4}% 62
+\BOOKMARK [2][-]{subsection.7.4.2}{Normal Order and Contractions}{section.7.4}% 63
+\BOOKMARK [2][-]{subsection.7.4.3}{Wick's Theorem}{section.7.4}% 64
+\BOOKMARK [2][-]{subsection.7.4.4}{Fermi Vacuum and Particle Holes}{section.7.4}% 65
+\BOOKMARK [2][-]{subsection.7.4.5}{Normal Ordered H}{section.7.4}% 66
+\BOOKMARK [2][-]{subsection.7.4.6}{CCSD Hamiltonian}{section.7.4}% 67
+\BOOKMARK [2][-]{subsection.7.4.7}{CCSD Energy}{section.7.4}% 68
+\BOOKMARK [2][-]{subsection.7.4.8}{tia amplitudes}{section.7.4}% 69
+\BOOKMARK [2][-]{subsection.7.4.9}{tijab amplitudes}{section.7.4}% 70
+\BOOKMARK [1][-]{section.7.5}{Introducing denominators}{chapter.7}% 71
+\BOOKMARK [2][-]{subsection.7.5.1}{tia}{section.7.5}% 72
+\BOOKMARK [2][-]{subsection.7.5.2}{tijab}{section.7.5}% 73
+\BOOKMARK [2][-]{subsection.7.5.3}{Initial guess}{section.7.5}% 74
+\BOOKMARK [1][-]{section.7.6}{CCSD factorization}{chapter.7}% 75
+\BOOKMARK [1][-]{section.7.7}{Constructing an algorithm}{chapter.7}% 76
+\BOOKMARK [2][-]{subsection.7.7.1}{Inserting denominators}{section.7.7}% 77
+\BOOKMARK [2][-]{subsection.7.7.2}{[W1]}{section.7.7}% 78
+\BOOKMARK [2][-]{subsection.7.7.3}{[W2]}{section.7.7}% 79
+\BOOKMARK [2][-]{subsection.7.7.4}{[W3]}{section.7.7}% 80
+\BOOKMARK [2][-]{subsection.7.7.5}{[F1]}{section.7.7}% 81
+\BOOKMARK [2][-]{subsection.7.7.6}{[F2]}{section.7.7}% 82
+\BOOKMARK [2][-]{subsection.7.7.7}{[F3]}{section.7.7}% 83
+\BOOKMARK [2][-]{subsection.7.7.8}{[W4]}{section.7.7}% 84
+\BOOKMARK [2][-]{subsection.7.7.9}{Inserting intermediates}{section.7.7}% 85
+\BOOKMARK [2][-]{subsection.7.7.10}{Inserting into tia}{section.7.7}% 86
+\BOOKMARK [2][-]{subsection.7.7.11}{Description of algorithm}{section.7.7}% 87
+\BOOKMARK [2][-]{subsection.7.7.12}{Scaling}{section.7.7}% 88
+\BOOKMARK [1][-]{section.7.8}{CCSDT equations}{chapter.7}% 89
+\BOOKMARK [2][-]{subsection.7.8.1}{CCSDT-1a}{section.7.8}% 90
+\BOOKMARK [2][-]{subsection.7.8.2}{CCSDT-1b}{section.7.8}% 91
+\BOOKMARK [2][-]{subsection.7.8.3}{CCSDT-2}{section.7.8}% 92
+\BOOKMARK [2][-]{subsection.7.8.4}{CCSDT-3}{section.7.8}% 93
+\BOOKMARK [2][-]{subsection.7.8.5}{CCSDT-4}{section.7.8}% 94
+\BOOKMARK [2][-]{subsection.7.8.6}{Full CCSDT}{section.7.8}% 95
+\BOOKMARK [0][-]{chapter.8}{Similarity Transformation Group methods}{}% 96
+\BOOKMARK [1][-]{section.8.1}{Introduction}{chapter.8}% 97
+\BOOKMARK [0][-]{chapter.9}{Monte Carlo Methods}{}% 98
+\BOOKMARK [1][-]{section.9.1}{Variational Monte Carlo methods}{chapter.9}% 99
+\BOOKMARK [2][-]{subsection.9.1.1}{The c++ code with a VMC Solver class, main program first}{section.9.1}% 100
+\BOOKMARK [1][-]{section.9.2}{The Metropolis algorithm}{chapter.9}% 101
+\BOOKMARK [1][-]{section.9.3}{Why blocking?}{chapter.9}% 102
+\BOOKMARK [2][-]{subsection.9.3.1}{Time Auto-correlation Function}{section.9.3}% 103
+\BOOKMARK [2][-]{subsection.9.3.2}{Importance sampling}{section.9.3}% 104
+\BOOKMARK [2][-]{subsection.9.3.3}{Importance sampling, program elements}{section.9.3}% 105
+\BOOKMARK [2][-]{subsection.9.3.4}{Importance sampling, program elements}{section.9.3}% 106
+\BOOKMARK [2][-]{subsection.9.3.5}{Importance sampling, program elements}{section.9.3}% 107
+\BOOKMARK [2][-]{subsection.9.3.6}{Importance sampling, program elements}{section.9.3}% 108
+\BOOKMARK [2][-]{subsection.9.3.7}{Importance sampling, program elements}{section.9.3}% 109
+\BOOKMARK [2][-]{subsection.9.3.8}{Importance sampling, program elements}{section.9.3}% 110
+\BOOKMARK [1][-]{section.9.4}{Efficient calculation of Slater determinants}{chapter.9}% 111
+\BOOKMARK [0][-]{chapter.10}{Infinite matter}{}% 112
+\BOOKMARK [1][-]{section.10.1}{Introduction to studies of infinite matter}{chapter.10}% 113
+\BOOKMARK [2][-]{subsection.10.1.1}{The infinite electron gas}{section.10.1}% 114
+\BOOKMARK [2][-]{subsection.10.1.2}{The infinite electron gas as a homogenous system}{section.10.1}% 115
+\BOOKMARK [2][-]{subsection.10.1.3}{Periodic boundary conditions}{section.10.1}% 116
+\BOOKMARK [2][-]{subsection.10.1.4}{Defining the Hamiltonian operator}{section.10.1}% 117
+\BOOKMARK [2][-]{subsection.10.1.5}{Single-particle Hartree-Fock energy}{section.10.1}% 118
+\BOOKMARK [2][-]{subsection.10.1.6}{Preparing the ground for numerical calculations; kinetic energy and Ewald term}{section.10.1}% 119
+\BOOKMARK [2][-]{subsection.10.1.7}{Ewald correction term}{section.10.1}% 120
+\BOOKMARK [2][-]{subsection.10.1.8}{Interaction in momentum space}{section.10.1}% 121
+\BOOKMARK [2][-]{subsection.10.1.9}{Antisymmetrized matrix elements in three dimensions}{section.10.1}% 122
+\BOOKMARK [2][-]{subsection.10.1.10}{Fock operator}{section.10.1}% 123
+\BOOKMARK [2][-]{subsection.10.1.11}{Periodic boundary conditions and single-particle states}{section.10.1}% 124
+\BOOKMARK [2][-]{subsection.10.1.12}{Magic number for the two-dimensional electron gas}{section.10.1}% 125
+\BOOKMARK [2][-]{subsection.10.1.13}{Hartree-Fock energies}{section.10.1}% 126
+\BOOKMARK [0][-]{chapter.11}{Decays}{}% 127
+\BOOKMARK [1][-]{section.11.1}{Electromagnetic multipole moments and transitions}{chapter.11}% 128
+\BOOKMARK [1][-]{section.11.2}{-decay}{chapter.11}% 129
+\BOOKMARK [1][-]{section.11.3}{References}{chapter.11}% 130
